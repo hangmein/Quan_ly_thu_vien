@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nhắc đến hạn — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e;--red:#c97272}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+.tabs2{display:flex;gap:0;border-bottom:1px solid rgba(201,169,110,.18);margin-bottom:20px}
+.tab2{padding:12px 26px;background:transparent;border:none;color:var(--ink2);font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;cursor:pointer;border-bottom:2px solid transparent;transition:all .3s}
+.tab2.active{color:var(--gold);border-bottom-color:var(--gold)}
+.pane{display:none}.pane.active{display:block}
+/* Style cho giấy báo khi in */
+@media print{
+  body *{visibility:hidden}
+  #print-area,#print-area *{visibility:visible}
+  #print-area{position:absolute;left:0;top:0;width:100%;background:#fff;color:#000;padding:40px}
+}
+</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+
+<!-- Vùng in giấy báo (ẩn trên màn hình, chỉ hiện khi in) -->
+<div id="print-area" style="display:none"></div>
+
+<script>
+let TAB='soon';
+async function init(){
+  const c=document.getElementById('content');
+  c.innerHTML=`
+    <div class="tabs2">
+      <button class="tab2 active" id="t-soon" onclick="switchTab('soon')">SẮP ĐẾN HẠN</button>
+      <button class="tab2" id="t-over" onclick="switchTab('over')">ĐÃ QUÁ HẠN</button>
+    </div>
+    <div class="pane active" id="pane-soon">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">SÁCH SẮP ĐẾN HẠN TRẢ</span>
+          <div class="search-row">
+            <label style="font-size:12px;color:var(--ink2);font-family:'Cinzel',serif">TRONG</label>
+            <select class="inp" id="days" onchange="loadSoon()"><option value="3">3 ngày tới</option><option value="7">7 ngày tới</option><option value="1">1 ngày tới</option></select>
+          </div>
+        </div>
+        <div id="soon-tbl"><div class="empty">Đang tải...</div></div>
+      </div>
+    </div>
+    <div class="pane" id="pane-over">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">SÁCH ĐÃ QUÁ HẠN</span>
+          <button class="tb-btn primary" onclick="printAll()">🖶 In giấy báo quá hạn</button>
+        </div>
+        <div id="over-tbl"><div class="empty">Đang tải...</div></div>
+      </div>
+    </div>`;
+  loadSoon();
+}
+
+function switchTab(t){
+  TAB=t;
+  document.getElementById('t-soon').classList.toggle('active',t==='soon');
+  document.getElementById('t-over').classList.toggle('active',t==='over');
+  document.getElementById('pane-soon').classList.toggle('active',t==='soon');
+  document.getElementById('pane-over').classList.toggle('active',t==='over');
+  if(t==='over') loadOver();
+}
+
+async function loadSoon(){
+  const days=document.getElementById('days')?.value||3;
+  const el=document.getElementById('soon-tbl');
+  el.innerHTML='<div class="empty">Đang tải...</div>';
+  try{
+    const data=await api.get('/borrows/sap-den-han?ngay='+days);
+    el.innerHTML=data.length?`<table><thead><tr><th>MÃ</th><th>ĐỘC GIẢ</th><th>LIÊN HỆ</th><th>SÁCH</th><th>HẠN TRẢ</th><th>CÒN LẠI</th></tr></thead><tbody>${data.map(b=>`<tr><td style="color:var(--gold)">#${b.id_phieu_muon}</td><td>${b.doc_gia}</td><td style="font-size:12px;color:var(--ink2)">${b.sdt||''}<br>${b.email||''}</td><td style="font-size:12px;max-width:200px">${b.sach_list}</td><td>${fmtDate(b.hen_tra)}</td><td><span style="color:${b.con_lai<=1?'#c97272':'#c9a96e'};font-family:'Cinzel',serif;font-size:11px">CÒN ${b.con_lai} NGÀY</span></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Không có sách nào sắp đến hạn</div>';
+  }catch(e){el.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+
+let overdueData=[];
+async function loadOver(){
+  const el=document.getElementById('over-tbl');
+  el.innerHTML='<div class="empty">Đang tải...</div>';
+  try{
+    overdueData=await api.get('/borrows/qua-han');
+    el.innerHTML=overdueData.length?`<table><thead><tr><th>MÃ</th><th>ĐỘC GIẢ</th><th>LIÊN HỆ</th><th>SÁCH</th><th>HẠN TRẢ</th><th>TRỄ</th><th></th></tr></thead><tbody>${overdueData.map(b=>`<tr><td style="color:var(--gold)">#${b.id_phieu_muon}</td><td>${b.doc_gia}</td><td style="font-size:12px;color:var(--ink2)">${b.sdt||''}</td><td style="font-size:12px;max-width:180px">${b.sach_list}</td><td>${fmtDate(b.hen_tra)}</td><td><span style="color:#c97272;font-family:'Cinzel',serif;font-size:11px">TRỄ ${b.so_ngay_tre} NGÀY</span></td><td><button class="btn-tbl" onclick="printOne(${b.id_phieu_muon})">In</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Không có sách quá hạn</div>';
+  }catch(e){el.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+
+function buildNotice(b){
+  const phat=b.so_ngay_tre*10000;
+  return `
+    <div style="border:2px solid #000;padding:30px;margin-bottom:20px;page-break-after:always;font-family:Georgia,serif">
+      <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:14px;margin-bottom:20px">
+        <div style="font-size:13px;letter-spacing:2px">THƯ VIỆN BIBLIOTHECA</div>
+        <h2 style="font-size:22px;margin:8px 0">GIẤY BÁO SÁCH QUÁ HẠN</h2>
+        <div style="font-size:12px">Ngày lập: ${new Date().toLocaleDateString('vi-VN')}</div>
+      </div>
+      <p style="margin-bottom:12px">Kính gửi độc giả: <strong>${b.doc_gia}</strong></p>
+      <p style="margin-bottom:12px">Điện thoại: ${b.sdt||'—'} &nbsp;&nbsp; Email: ${b.email||'—'}</p>
+      <p style="margin-bottom:12px">Thư viện xin thông báo, quý độc giả đang giữ (các) tài liệu sau đã <strong>quá hạn trả</strong>:</p>
+      <div style="background:#f4f0e8;padding:14px;margin-bottom:12px">
+        <div><strong>Mã phiếu mượn:</strong> #${b.id_phieu_muon}</div>
+        <div><strong>Tên sách:</strong> ${b.sach_list}</div>
+        <div><strong>Hạn trả:</strong> ${new Date(b.hen_tra).toLocaleDateString('vi-VN')}</div>
+        <div><strong>Số ngày trễ:</strong> ${b.so_ngay_tre} ngày</div>
+        <div><strong>Tiền phạt dự kiến:</strong> ${phat.toLocaleString('vi-VN')} ₫ (10.000₫/ngày)</div>
+      </div>
+      <p style="margin-bottom:12px">Đề nghị quý độc giả mang sách đến thư viện để hoàn trả và thanh toán phí phạt trong thời gian sớm nhất.</p>
+      <div style="display:flex;justify-content:space-between;margin-top:40px">
+        <div style="text-align:center"><div>Độc giả</div><div style="font-style:italic;font-size:12px">(Ký, ghi rõ họ tên)</div></div>
+        <div style="text-align:center"><div>Cán bộ thư viện</div><div style="font-style:italic;font-size:12px">(Ký, ghi rõ họ tên)</div></div>
+      </div>
+    </div>`;
+}
+
+function printOne(id){
+  const b=overdueData.find(x=>x.id_phieu_muon===id);
+  if(!b)return;
+  document.getElementById('print-area').innerHTML=buildNotice(b);
+  window.print();
+}
+
+function printAll(){
+  if(!overdueData.length){toast('Không có phiếu quá hạn để in','error');return;}
+  document.getElementById('print-area').innerHTML=overdueData.map(buildNotice).join('');
+  window.print();
+}
+
+init();
+</script>
+</body>
+</html>

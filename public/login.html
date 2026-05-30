@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đăng nhập — BIBLIOTHECA</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--ink3:#5a4d3a;--gold:#c9a96e;--gold2:#e6c989;--border:rgba(201,169,110,.18);--border2:rgba(201,169,110,.36)}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at top,rgba(92,31,31,.2),transparent 60%),var(--bg)}
+.box{width:420px;background:var(--bg1);border:1px solid var(--border2);padding:52px 48px}
+h1{font-family:'Cinzel',serif;font-weight:800;font-size:24px;letter-spacing:5px;color:var(--ink);text-align:center;margin-bottom:4px}
+h1 span{color:var(--gold)}
+.sub{text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--ink2);margin-bottom:36px;font-size:15px}
+.divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:32px}
+.tabs{display:flex;margin-bottom:28px;border:1px solid var(--border)}
+.tab{flex:1;padding:11px;background:transparent;border:none;color:var(--ink2);font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;cursor:pointer;transition:all .3s}
+.tab.active{background:var(--gold);color:var(--bg);font-weight:700}
+.group{margin-bottom:20px}
+.group label{display:block;font-family:'Cinzel',serif;font-size:9px;letter-spacing:3px;color:var(--gold);margin-bottom:8px}
+.group input{width:100%;padding:13px 16px;background:var(--bg2);border:1px solid var(--border);color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border .3s}
+.group input:focus{border-color:var(--gold)}
+.group input::placeholder{color:var(--ink3)}
+.btn{width:100%;padding:15px;background:var(--gold);color:var(--bg);font-family:'Cinzel',serif;font-size:12px;letter-spacing:4px;border:none;cursor:pointer;transition:all .3s;font-weight:700;margin-top:8px}
+.btn:hover{background:var(--gold2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:#c97272;font-size:13px;text-align:center;margin-top:14px;font-family:'Cormorant Garamond',serif;font-style:italic;min-height:20px}
+.back{text-align:center;margin-top:20px}
+.back a{color:var(--ink2);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;cursor:pointer;text-decoration:none;transition:color .3s}
+.back a:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1><span>◆</span> BIBLIOTHECA <span>◆</span></h1>
+  <p class="sub">Hệ thống quản lý thư viện</p>
+  <div class="divider"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('reader')">ĐỘC GIẢ</button>
+    <button class="tab" onclick="switchTab('staff')">NHÂN VIÊN</button>
+  </div>
+
+  <div class="group">
+    <label>TÊN ĐĂNG NHẬP</label>
+    <input type="text" id="username" placeholder="Nhập tên đăng nhập" autocomplete="username">
+  </div>
+  <div class="group">
+    <label>MẬT KHẨU</label>
+    <input type="password" id="password" placeholder="Nhập mật khẩu" autocomplete="current-password">
+  </div>
+
+  <button class="btn" id="login-btn" onclick="doLogin()">ĐĂNG NHẬP</button>
+  <div class="err" id="err"></div>
+  <div class="back"><a href="/">← Quay về trang thư viện</a></div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+let currentTab = 'reader';
+
+function switchTab(t) {
+  currentTab = t;
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', (i===0&&t==='reader')||(i===1&&t==='staff')));
+  document.getElementById('err').textContent = '';
+}
+
+async function doLogin() {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value;
+  if (!u || !p) { document.getElementById('err').textContent = 'Vui lòng nhập đầy đủ thông tin'; return; }
+
+  setLoading('#login-btn', true);
+  document.getElementById('err').textContent = '';
+
+  try {
+    const data = await api.post('/auth/login', { ten_dang_nhap: u, mat_khau: p });
+    Auth.save(data.token, data.user);
+
+    const role = data.user.vai_tro;
+    if (currentTab === 'staff' && !['admin','librarian'].includes(role)) {
+      Auth.clear();
+      document.getElementById('err').textContent = 'Tài khoản này không có quyền nhân viên';
+      return;
+    }
+
+    // Redirect theo vai trò
+    if (['admin','librarian'].includes(role)) window.location = '/admin/dashboard.html';
+    else window.location = '/profile.html';
+  } catch (e) {
+    document.getElementById('err').textContent = e.message;
+  } finally {
+    setLoading('#login-btn', false);
+  }
+}
+
+document.getElementById('password').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+
+// Nếu đã đăng nhập thì redirect luôn
+if (Auth.isLoggedIn()) {
+  window.location = Auth.isStaff() ? '/admin/dashboard.html' : '/profile.html';
+}
+</script>
+</body>
+</html>

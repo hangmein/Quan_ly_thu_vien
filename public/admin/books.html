@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quản lý sách — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e;--gold2:#e6c989}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+
+<!-- Modal thêm/sửa sách -->
+<div class="modal-back" id="book-modal">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-ttl" id="modal-title">THÊM SÁCH MỚI</span><button class="modal-x" onclick="closeModal('book-modal')">✕</button></div>
+    <div class="modal-bd">
+      <div class="row2">
+        <div class="fg"><label>ISBN</label><input class="inp" id="b-isbn" placeholder="978-604-..."></div>
+        <div class="fg"><label>NĂM XUẤT BẢN</label><input class="inp" type="number" id="b-year" placeholder="2024"></div>
+      </div>
+      <div class="fg"><label>TIÊU ĐỀ *</label><input class="inp" id="b-title" placeholder="Nhập tiêu đề sách"></div>
+      <div class="row2">
+        <div class="fg"><label>TÁC GIẢ *</label><select class="inp" id="b-author"></select></div>
+        <div class="fg"><label>THỂ LOẠI *</label><select class="inp" id="b-genre"></select></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>NHÀ XUẤT BẢN</label><select class="inp" id="b-nxb"><option value="">-- Chọn --</option></select></div>
+        <div class="fg"><label>KỆ SÁCH</label><select class="inp" id="b-ke"><option value="">-- Chọn --</option></select></div>
+      </div>
+      <div class="row2">
+        <div class="fg"><label>NGÔN NGỮ</label><select class="inp" id="b-lang"><option value="">-- Chọn --</option></select></div>
+        <div class="fg"><label>SỐ LƯỢNG</label><input class="inp" type="number" id="b-qty" value="1" min="1"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="modal-btn" onclick="closeModal('book-modal')">Hủy</button>
+      <button class="modal-btn save" id="save-btn" onclick="saveBook()">Lưu sách</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const c = document.getElementById('content');
+let editId = null;
+let catalog = {};
+
+// Thêm nút vào topbar
+document.getElementById('topbar-actions').insertAdjacentHTML('beforeend',
+  `<button class="tb-btn primary" onclick="openAdd()">+ Thêm sách</button>`);
+
+async function init() {
+  // Load danh mục
+  try {
+    const [authors,genres,nxbs,kes,langs] = await Promise.all([
+      api.get('/catalog/tac-gia'),
+      api.get('/catalog/the-loai'),
+      api.get('/catalog/nxb'),
+      api.get('/catalog/ke-sach'),
+      api.get('/catalog/ngon-ngu'),
+    ]);
+    catalog = { authors, genres, nxbs, kes, langs };
+    fillSelect('b-author', authors, 'id_tac_gia','ho_ten');
+    fillSelect('b-genre',  genres,  'id_the_loai','ten_the_loai');
+    fillSelect('b-nxb',    nxbs,    'id_nxb','ten_nxb', true);
+    fillSelect('b-ke',     kes,     'id_ke','ma_ke', true);
+    fillSelect('b-lang',   langs,   'id_ngon_ngu','ten_ngon_ngu', true);
+  } catch(e){}
+
+  renderTable();
+}
+
+function fillSelect(id, data, valKey, labelKey, addEmpty=false) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  if (addEmpty) sel.innerHTML = '<option value="">-- Chọn --</option>';
+  else sel.innerHTML = '';
+  data.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d[valKey]; o.textContent = d[labelKey];
+    sel.appendChild(o);
+  });
+}
+
+async function renderTable(keyword='', genre='') {
+  c.innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">DANH SÁCH SÁCH</span>
+        <div class="search-row">
+          <input class="inp" id="kw" placeholder="Tên sách, tác giả..." value="${keyword}" oninput="renderTable(this.value, document.getElementById('gf').value)" style="min-width:220px">
+          <select class="inp" id="gf" onchange="renderTable(document.getElementById('kw').value, this.value)">
+            <option value="">Tất cả thể loại</option>
+            ${catalog.genres?.map(g=>`<option value="${g.ten_the_loai}" ${g.ten_the_loai===genre?'selected':''}>${g.ten_the_loai}</option>`).join('')||''}
+          </select>
+        </div>
+      </div>
+      <div id="tbl-wrap"><div class="empty">Đang tải...</div></div>
+    </div>`;
+
+  try {
+    const params = new URLSearchParams();
+    if (keyword) params.set('keyword', keyword);
+    if (genre)   params.set('the_loai', genre);
+    params.set('limit', '50');
+    const books = await api.get('/books?' + params);
+    document.getElementById('tbl-wrap').innerHTML = books.length ? `
+      <table>
+        <thead><tr><th>ID</th><th>TIÊU ĐỀ</th><th>TÁC GIẢ</th><th>THỂ LOẠI</th><th>NĂM</th><th>TỒN/TỔNG</th><th>ĐÁNH GIÁ</th><th>TT</th><th></th></tr></thead>
+        <tbody>${books.map(b=>`
+          <tr>
+            <td style="color:var(--ink2)">${b.id_sach}</td>
+            <td><strong>${b.tieu_de}</strong></td>
+            <td style="color:var(--ink2)">${b.tac_gia}</td>
+            <td><span style="font-size:11px;color:var(--gold)">${b.ten_the_loai}</span></td>
+            <td>${b.nam_xuat_ban||'—'}</td>
+            <td style="color:${b.so_luong_ton===0?'#c97272':b.so_luong_ton<=1?'#c9a96e':'#8fc972'}">${b.so_luong_ton}/${b.so_luong_tong}</td>
+            <td style="color:var(--gold)">★ ${b.danh_gia||0}</td>
+            <td>${statusBadge(b.so_luong_ton>0?'available':'borrowed')}</td>
+            <td>
+              <button class="btn-tbl" onclick="openEdit(${b.id_sach})">Sửa</button>
+              <button class="btn-tbl danger" onclick="deleteBook(${b.id_sach},'${b.tieu_de.replace(/'/g,"\\'")}')">Xóa</button>
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>` : '<div class="empty">Không tìm thấy sách nào</div>';
+  } catch(e) { document.getElementById('tbl-wrap').innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+
+function openAdd() {
+  editId = null;
+  document.getElementById('modal-title').textContent = 'THÊM SÁCH MỚI';
+  ['b-isbn','b-title','b-year'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('b-qty').value = 1;
+  openModal('book-modal');
+}
+
+async function openEdit(id) {
+  editId = id;
+  document.getElementById('modal-title').textContent = 'CHỈNH SỬA SÁCH';
+  try {
+    const b = await api.get('/books/'+id);
+    document.getElementById('b-isbn').value    = b.isbn||'';
+    document.getElementById('b-title').value   = b.tieu_de;
+    document.getElementById('b-year').value    = b.nam_xuat_ban||'';
+    document.getElementById('b-qty').value     = b.so_luong_tong;
+    document.getElementById('b-author').value  = b.id_tac_gia;
+    document.getElementById('b-genre').value   = b.id_the_loai;
+    document.getElementById('b-nxb').value     = b.id_nxb||'';
+    document.getElementById('b-ke').value      = b.id_ke||'';
+    document.getElementById('b-lang').value    = b.id_ngon_ngu||'';
+    openModal('book-modal');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function saveBook() {
+  const title = document.getElementById('b-title').value.trim();
+  const author = document.getElementById('b-author').value;
+  const genre  = document.getElementById('b-genre').value;
+  if (!title || !author || !genre) { toast('Vui lòng điền tiêu đề, tác giả, thể loại','error'); return; }
+
+  const body = {
+    isbn: document.getElementById('b-isbn').value||null,
+    tieu_de: title,
+    id_tac_gia:  parseInt(author),
+    id_the_loai: parseInt(genre),
+    id_nxb:  parseInt(document.getElementById('b-nxb').value)||null,
+    id_ke:   parseInt(document.getElementById('b-ke').value)||null,
+    id_ngon_ngu: parseInt(document.getElementById('b-lang').value)||null,
+    nam_xuat_ban: parseInt(document.getElementById('b-year').value)||null,
+    so_luong_tong: parseInt(document.getElementById('b-qty').value)||1,
+  };
+
+  setLoading('#save-btn', true);
+  try {
+    if (editId) { await api.put('/books/'+editId, body); toast('Cập nhật sách thành công','success'); }
+    else        { await api.post('/books', body); toast('Thêm sách thành công','success'); }
+    closeModal('book-modal');
+    renderTable();
+  } catch(e) { toast(e.message,'error'); }
+  finally { setLoading('#save-btn',false); }
+}
+
+async function deleteBook(id, title) {
+  if (!await confirm2(`Xóa sách "${title}"?`)) return;
+  try {
+    await api.delete('/books/'+id);
+    toast('Đã xóa sách','success');
+    renderTable();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+init();
+</script>
+</body>
+</html>

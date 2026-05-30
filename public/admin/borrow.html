@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mượn / Trả — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}
+.sach-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(201,169,110,.1);border:1px solid rgba(201,169,110,.25);font-size:12px;margin:3px}
+.sach-tag button{background:none;border:none;color:#c97272;cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
+</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+
+<!-- Modal báo mất sách -->
+<div class="modal-back" id="lost-modal">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-ttl">BÁO MẤT SÁCH</span><button class="modal-x" onclick="closeModal('lost-modal')">✕</button></div>
+    <div class="modal-bd">
+      <div class="fg"><label>CHỌN ĐỘC GIẢ *</label><select class="inp" id="l-reader" style="width:100%"><option value="">-- Chọn độc giả --</option></select></div>
+      <div class="fg"><label>CHỌN SÁCH BỊ MẤT *</label><select class="inp" id="l-book" style="width:100%"><option value="">-- Chọn sách --</option></select></div>
+      <div class="fg"><label>TIỀN ĐỀN BÙ (₫)</label><input class="inp" type="number" id="l-money" placeholder="VD: 150000" style="width:100%"></div>
+      <div style="background:rgba(201,114,114,.08);border:1px solid rgba(201,114,114,.2);padding:12px;font-size:13px;color:#8a7a60;font-family:'Cormorant Garamond',serif;font-style:italic">
+        Khi xác nhận: hệ thống ghi nhận sách mất, giảm số lượng tồn trong kho và tự động lập phiếu phạt đền bù.
+      </div>
+    </div>
+    <div class="modal-ft"><button class="modal-btn" onclick="closeModal('lost-modal')">Hủy</button><button class="modal-btn save" id="lsave-btn" onclick="saveLost()">Xác nhận báo mất</button></div>
+  </div>
+</div>
+
+<script>
+const c = document.getElementById('content');
+let readers=[], books=[], selectedBooks=[];
+
+async function init() {
+  try {
+    [readers, books] = await Promise.all([
+      api.get('/readers?trang_thai=active'),
+      api.get('/books?limit=200'),
+    ]);
+  } catch(e) { toast(e.message,'error'); }
+
+  const today = new Date().toISOString().split('T')[0];
+  const due14 = new Date(Date.now()+14*864e5).toISOString().split('T')[0];
+  const staffId = Auth.getUser()?.id || 1;
+
+  c.innerHTML = `
+    <div class="form-grid">
+      <!-- Lập phiếu mượn -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">LẬP PHIẾU MƯỢN</span></div>
+        <div class="fg"><label>CHỌN ĐỘC GIẢ *</label>
+          <select class="inp" id="borrow-reader" style="width:100%" onchange="onReaderChange(this.value)">
+            <option value="">-- Chọn độc giả --</option>
+            ${readers.map(r=>`<option value="${r.id_doc_gia}">${r.ho_ten} — ${r.ten_goi||''}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg" id="reader-info" style="display:none"></div>
+        <div class="fg"><label>THÊM SÁCH</label>
+          <div style="display:flex;gap:8px">
+            <select class="inp" id="book-pick" style="flex:1">
+              <option value="">-- Chọn sách --</option>
+              ${books.filter(b=>b.so_luong_ton>0).map(b=>`<option value="${b.id_sach}" data-title="${b.tieu_de}">${b.tieu_de} (còn: ${b.so_luong_ton})</option>`).join('')}
+            </select>
+            <button class="tb-btn" onclick="addBook()">+</button>
+          </div>
+        </div>
+        <div class="fg"><div id="selected-books"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="fg"><label>NGÀY MƯỢN</label><input class="inp" type="date" id="borrow-date" value="${today}" style="width:100%"></div>
+          <div class="fg"><label>HẠN TRẢ</label><input class="inp" type="date" id="borrow-due" value="${due14}" style="width:100%"></div>
+        </div>
+        <button class="tb-btn primary" id="borrow-btn" onclick="createBorrow()">LẬP PHIẾU MƯỢN</button>
+      </div>
+
+      <!-- Tiếp nhận trả -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">TIẾP NHẬN TRẢ SÁCH</span></div>
+        <div class="fg"><label>MÃ PHIẾU MƯỢN *</label>
+          <div style="display:flex;gap:8px">
+            <input class="inp" type="number" id="return-id" placeholder="Nhập mã phiếu" style="flex:1">
+            <button class="tb-btn" onclick="lookupBorrow()">Tra</button>
+          </div>
+        </div>
+        <div class="fg" id="borrow-info" style="display:none"></div>
+        <div class="fg"><label>NGÀY TRẢ</label><input class="inp" type="date" id="return-date" value="${today}" style="width:100%"></div>
+        <div class="fg"><label>TÌNH TRẠNG SÁCH</label>
+          <select class="inp" id="return-cond" style="width:100%">
+            <option value="Tốt">Tốt</option>
+            <option value="Bình thường">Bình thường</option>
+            <option value="Hư hỏng nhẹ">Hư hỏng nhẹ</option>
+            <option value="Hư hỏng nặng">Hư hỏng nặng</option>
+          </select>
+        </div>
+        <button class="tb-btn primary" id="return-btn" onclick="returnBook()" style="margin-bottom:8px">TIẾP NHẬN TRẢ</button>
+        <button class="tb-btn" onclick="openLost()">Báo mất sách</button>
+      </div>
+    </div>
+
+    <!-- Danh sách phiếu mượn -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">DANH SÁCH PHIẾU MƯỢN</span>
+        <div class="search-row">
+          <input class="inp" id="kw" placeholder="Tên độc giả, sách..." oninput="loadBorrows()" style="min-width:200px">
+          <select class="inp" id="sf" onchange="loadBorrows()">
+            <option value="">Tất cả</option>
+            <option value="borrowing">Đang mượn</option>
+            <option value="overdue">Quá hạn</option>
+            <option value="returned">Đã trả</option>
+          </select>
+          <button class="tb-btn" onclick="loadBorrows()">Làm mới</button>
+        </div>
+      </div>
+      <div id="borrow-tbl"><div class="empty">Đang tải...</div></div>
+    </div>`;
+
+  loadBorrows();
+}
+
+function addBook() {
+  const sel = document.getElementById('book-pick');
+  const id = sel.value, title = sel.options[sel.selectedIndex]?.dataset.title;
+  if (!id) return;
+  if (selectedBooks.find(b=>b.id===id)) { toast('Sách đã được chọn','error'); return; }
+  selectedBooks.push({ id, title });
+  renderSelected();
+}
+
+function removeBook(id) {
+  selectedBooks = selectedBooks.filter(b=>b.id!==id);
+  renderSelected();
+}
+
+function renderSelected() {
+  document.getElementById('selected-books').innerHTML = selectedBooks.length
+    ? selectedBooks.map(b=>`<span class="sach-tag">${b.title}<button onclick="removeBook('${b.id}')">✕</button></span>`).join('')
+    : '<span style="font-size:12px;color:var(--ink2)">Chưa chọn sách nào</span>';
+}
+
+async function onReaderChange(id) {
+  const info = document.getElementById('reader-info');
+  if (!id) { info.style.display='none'; return; }
+  try {
+    const r = await api.get('/readers/'+id);
+    info.style.display='';
+    info.innerHTML = `<div style="background:rgba(201,169,110,.06);padding:12px;font-size:13px;border:1px solid rgba(201,169,110,.18)">
+      <div style="margin-bottom:4px"><strong style="color:var(--gold)">Gói thẻ:</strong> ${r.ten_goi} — tối đa ${r.so_sach_toi_da} cuốn, ${r.so_ngay_muon} ngày</div>
+      <div><strong style="color:var(--gold)">Hạn thẻ:</strong> ${fmtDate(r.ngay_het_han)}</div>
+    </div>`;
+  } catch(e){}
+}
+
+async function lookupBorrow() {
+  const id = document.getElementById('return-id').value;
+  if (!id) return;
+  const info = document.getElementById('borrow-info');
+  try {
+    const borrows = await api.get('/borrows?id_doc_gia=&keyword=&trang_thai=borrowing');
+    const b = borrows.find(x=>x.id_phieu_muon==id) || await api.get('/borrows').then(all=>all.find(x=>x.id_phieu_muon==id));
+    if (!b) { info.style.display=''; info.innerHTML='<div style="color:#c97272;font-size:13px">Không tìm thấy phiếu mượn</div>'; return; }
+    const overdue = new Date(b.hen_tra)<new Date() && b.trang_thai!=='returned';
+    info.style.display='';
+    info.innerHTML = `<div style="background:rgba(201,169,110,.06);padding:12px;font-size:13px;border:1px solid ${overdue?'rgba(201,114,114,.3)':'rgba(201,169,110,.18)'}">
+      <div><strong style="color:var(--gold)">Độc giả:</strong> ${b.doc_gia}</div>
+      <div><strong style="color:var(--gold)">Sách:</strong> ${b.sach_list}</div>
+      <div><strong style="color:var(--gold)">Hạn trả:</strong> <span style="color:${overdue?'#c97272':'var(--ink)'}">${fmtDate(b.hen_tra)}</span>${overdue?' ⚠ QUÁ HẠN':''}</div>
+    </div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function createBorrow() {
+  const readerId = document.getElementById('borrow-reader').value;
+  if (!readerId) { toast('Vui lòng chọn độc giả','error'); return; }
+  if (!selectedBooks.length) { toast('Vui lòng chọn ít nhất 1 cuốn sách','error'); return; }
+  const due = document.getElementById('borrow-due').value;
+  if (!due) { toast('Vui lòng chọn hạn trả','error'); return; }
+
+  setLoading('#borrow-btn', true);
+  try {
+    const res = await api.post('/borrows', {
+      id_doc_gia:   parseInt(readerId),
+      id_nhan_vien: Auth.getUser()?.id || 1,
+      sach_ids:     selectedBooks.map(b=>parseInt(b.id)),
+      hen_tra:      due,
+    });
+    toast('Lập phiếu mượn thành công — mã #' + res.id_phieu_muon,'success');
+    selectedBooks = [];
+    renderSelected();
+    document.getElementById('borrow-reader').value='';
+    document.getElementById('reader-info').style.display='none';
+    loadBorrows();
+  } catch(e) { toast(e.message,'error'); }
+  finally { setLoading('#borrow-btn',false); }
+}
+
+async function returnBook() {
+  const id = document.getElementById('return-id').value;
+  if (!id) { toast('Vui lòng nhập mã phiếu mượn','error'); return; }
+  setLoading('#return-btn', true);
+  try {
+    const res = await api.post('/borrows/'+id+'/tra', {
+      id_nhan_vien: Auth.getUser()?.id || 1,
+      tinh_trang_sach: document.getElementById('return-cond').value,
+    });
+    toast(res.message, res.tre_han>0 ? 'error' : 'success');
+    document.getElementById('return-id').value='';
+    document.getElementById('borrow-info').style.display='none';
+    loadBorrows();
+  } catch(e) { toast(e.message,'error'); }
+  finally { setLoading('#return-btn',false); }
+}
+
+async function quickGiaHan(id) {
+  try {
+    await api.put('/borrows/'+id+'/gia-han', { so_ngay: 7 });
+    toast('Đã gia hạn thêm 7 ngày','success');
+    loadBorrows();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// Báo mất từ một phiếu mượn cụ thể (biết chính xác phiếu nào)
+let lostContext = null;
+async function lostFromBorrow(idPM) {
+  try {
+    // Lấy chi tiết phiếu để biết độc giả + các sách trong phiếu
+    const all = await api.get('/borrows');
+    const b = all.find(x=>x.id_phieu_muon==idPM);
+    if (!b) { toast('Không tìm thấy phiếu mượn','error'); return; }
+
+    // Lấy chi tiết sách trong phiếu (sach_list là chuỗi tên, cần map sang id)
+    // Dùng danh sách books đã load để map tên -> id
+    const tenSachList = b.sach_list.split(', ').map(s=>s.trim());
+    const sachTrongPhieu = books.filter(bk => tenSachList.includes(bk.tieu_de));
+
+    lostContext = { idPM, id_doc_gia: b.id_doc_gia };
+
+    // Đổ danh sách sách trong phiếu vào dropdown (chỉ những cuốn của phiếu này)
+    const bs = document.getElementById('l-book');
+    bs.innerHTML = '<option value="">-- Chọn sách bị mất --</option>' +
+      sachTrongPhieu.map(bk=>`<option value="${bk.id_sach}">${bk.tieu_de}</option>`).join('');
+
+    // Khóa độc giả (hiển thị tên, không cho đổi)
+    const rs = document.getElementById('l-reader');
+    rs.innerHTML = `<option value="${b.id_doc_gia}">${b.doc_gia}</option>`;
+    rs.value = b.id_doc_gia;
+    rs.disabled = true;
+
+    document.querySelector('#lost-modal .modal-ttl').textContent = `BÁO MẤT SÁCH — PHIẾU #${idPM}`;
+    openModal('lost-modal');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function openLost() {
+  // Báo mất tự do (không gắn phiếu) — chọn cả độc giả lẫn sách
+  lostContext = null;
+  const rs = document.getElementById('l-reader');
+  rs.disabled = false;
+  rs.innerHTML = '<option value="">-- Chọn độc giả --</option>' +
+    readers.map(r=>`<option value="${r.id_doc_gia}">${r.ho_ten}</option>`).join('');
+  const bs = document.getElementById('l-book');
+  bs.innerHTML = '<option value="">-- Chọn sách --</option>' +
+    books.map(b=>`<option value="${b.id_sach}">${b.tieu_de}</option>`).join('');
+  document.querySelector('#lost-modal .modal-ttl').textContent = 'BÁO MẤT SÁCH';
+  openModal('lost-modal');
+}
+
+async function saveLost() {
+  const dg = document.getElementById('l-reader').value;
+  const sid = document.getElementById('l-book').value;
+  const tien = document.getElementById('l-money').value;
+  if (!dg || !sid) { toast('Vui lòng chọn độc giả và sách','error'); return; }
+  setLoading('#lsave-btn', true);
+  try {
+    const body = {
+      id_doc_gia: parseInt(dg),
+      id_sach: parseInt(sid),
+      tien_den_bu: parseInt(tien) || 0,
+    };
+    // Nếu báo mất từ phiếu cụ thể, gửi kèm id_phieu_muon
+    if (lostContext?.idPM) body.id_phieu_muon = lostContext.idPM;
+
+    await api.post('/fines/bao-mat', body);
+    toast('Đã ghi nhận báo mất sách','success');
+    closeModal('lost-modal');
+    document.getElementById('l-money').value = '';
+    document.getElementById('l-reader').disabled = false;
+    lostContext = null;
+    // Tải lại sách (tồn kho đã đổi) và danh sách phiếu
+    books = await api.get('/books?limit=200');
+    loadBorrows();
+  } catch(e) { toast(e.message,'error'); }
+  finally { setLoading('#lsave-btn', false); }
+}
+
+async function loadBorrows() {
+  const kw = document.getElementById('kw')?.value||'';
+  const sf = document.getElementById('sf')?.value||'';
+  const tbl = document.getElementById('borrow-tbl');
+  if (!tbl) return;
+  tbl.innerHTML = '<div class="empty">Đang tải...</div>';
+  try {
+    const params = new URLSearchParams();
+    if (kw) params.set('keyword',kw);
+    if (sf) params.set('trang_thai',sf);
+    const data = await api.get('/borrows?'+params);
+    tbl.innerHTML = data.length ? `
+      <table>
+        <thead><tr><th>MÃ PM</th><th>ĐỘC GIẢ</th><th>SÁCH</th><th>NGÀY MƯỢN</th><th>HẠN TRẢ</th><th>NGÀY TRẢ</th><th>TT</th><th></th></tr></thead>
+        <tbody>${data.map(b=>`
+          <tr>
+            <td style="color:var(--gold)"><strong>#${b.id_phieu_muon}</strong></td>
+            <td>${b.doc_gia}</td>
+            <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${b.sach_list}">${b.sach_list}</td>
+            <td style="color:var(--ink2)">${fmtDate(b.ngay_muon)}</td>
+            <td style="color:${b.trang_thai==='overdue'?'#c97272':b.trang_thai==='returned'?'var(--ink2)':'var(--ink)'}">${fmtDate(b.hen_tra)}</td>
+            <td style="color:var(--ink2)">${b.ngay_tra?fmtDate(b.ngay_tra):'—'}</td>
+            <td>${statusBadge(b.trang_thai)}</td>
+            <td>
+              ${b.trang_thai!=='returned'?`
+                <button class="btn-tbl" onclick="document.getElementById('return-id').value=${b.id_phieu_muon};lookupBorrow()">Trả</button>
+                <button class="btn-tbl" onclick="quickGiaHan(${b.id_phieu_muon})">+7 ngày</button>
+                <button class="btn-tbl danger" onclick="lostFromBorrow(${b.id_phieu_muon})">Báo mất</button>
+              `:''}
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>` : '<div class="empty">Không có phiếu mượn nào</div>';
+  } catch(e) { tbl.innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+
+init();
+</script>
+</body>
+</html>

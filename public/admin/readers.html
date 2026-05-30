@@ -1,0 +1,106 @@
+<!-- readers.html -->
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quản lý độc giả — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+<div class="modal-back" id="reader-modal">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-ttl" id="rmodal-title">ĐĂNG KÝ ĐỘC GIẢ MỚI</span><button class="modal-x" onclick="closeModal('reader-modal')">✕</button></div>
+    <div class="modal-bd">
+      <div class="row2"><div class="fg"><label>HỌ TÊN *</label><input class="inp" id="r-name" placeholder="Nguyễn Văn A"></div><div class="fg"><label>SĐT</label><input class="inp" id="r-phone" placeholder="09xxxxxxxx"></div></div>
+      <div class="fg"><label>EMAIL</label><input class="inp" id="r-email" placeholder="email@example.com"></div>
+      <div class="fg"><label>ĐỊA CHỈ</label><input class="inp" id="r-addr" placeholder="Địa chỉ..."></div>
+      <div class="row2">
+        <div class="fg"><label>GÓI THẺ *</label><select class="inp" id="r-plan"></select></div>
+        <div class="fg"><label>TÊN ĐĂNG NHẬP</label><input class="inp" id="r-user" placeholder="username (tuỳ chọn)"></div>
+      </div>
+      <div class="fg"><label>MẬT KHẨU</label><input class="inp" type="password" id="r-pass" placeholder="Nếu có tạo tài khoản"></div>
+    </div>
+    <div class="modal-ft"><button class="modal-btn" onclick="closeModal('reader-modal')">Hủy</button><button class="modal-btn save" id="rsave-btn" onclick="saveReader()">Đăng ký thẻ</button></div>
+  </div>
+</div>
+
+<!-- Modal chi tiết / quá trình hoạt động -->
+<div class="modal-back" id="detail-modal">
+  <div class="modal" style="width:640px">
+    <div class="modal-hd"><span class="modal-ttl" id="detail-title">QUÁ TRÌNH HOẠT ĐỘNG</span><button class="modal-x" onclick="closeModal('detail-modal')">✕</button></div>
+    <div class="modal-bd" id="detail-body"><div class="empty">Đang tải...</div></div>
+  </div>
+</div>
+<script>
+document.getElementById('topbar-actions').insertAdjacentHTML('beforeend',`<button class="tb-btn primary" onclick="openAdd()">+ Đăng ký thẻ</button>`);
+let plans=[], editId=null;
+async function init(){
+  try{ plans=await api.get('/catalog/goi-the'); fillSelect('r-plan',plans,'id_goi_the','ten_goi'); }catch(e){}
+  load();
+}
+function fillSelect(id,data,vk,lk){const s=document.getElementById(id);s.innerHTML='';data.forEach(d=>{const o=document.createElement('option');o.value=d[vk];o.textContent=d[lk];s.appendChild(o);});}
+async function load(kw='',tt=''){
+  const c=document.getElementById('content');
+  c.innerHTML=`<div class="card"><div class="card-head"><span class="card-title">DANH SÁCH ĐỘC GIẢ</span><div class="search-row"><input class="inp" id="kw" placeholder="Tên, email, SĐT..." value="${kw}" oninput="load(this.value,document.getElementById('sf').value)" style="min-width:200px"><select class="inp" id="sf" onchange="load(document.getElementById('kw').value,this.value)"><option value="">Tất cả</option><option value="active" ${tt==='active'?'selected':''}>Hoạt động</option><option value="locked" ${tt==='locked'?'selected':''}>Đã khóa</option></select></div></div><div id="tbl-wrap"><div class="empty">Đang tải...</div></div></div>`;
+  try{
+    const p=new URLSearchParams();if(kw)p.set('keyword',kw);if(tt)p.set('trang_thai',tt);
+    const data=await api.get('/readers?'+p);
+    document.getElementById('tbl-wrap').innerHTML=data.length?`<table><thead><tr><th>ID</th><th>HỌ TÊN</th><th>SĐT</th><th>GÓI THẺ</th><th>HẠN THẺ</th><th>ĐANG MƯỢN</th><th>TT</th><th></th></tr></thead><tbody>${data.map(r=>`<tr><td style="color:var(--ink2)">${r.id_doc_gia}</td><td><strong>${r.ho_ten}</strong><div style="font-size:11px;color:var(--ink2)">${r.email||''}</div></td><td>${r.sdt||'—'}</td><td style="color:var(--gold)">${r.ten_goi}</td><td style="color:${new Date(r.ngay_het_han)<new Date()?'#c97272':'var(--ink2)'}">${fmtDate(r.ngay_het_han)}</td><td style="color:${r.dang_muon>0?'#c9a96e':'var(--ink2)'}">${r.dang_muon}</td><td>${statusBadge(r.trang_thai)}</td><td><button class="btn-tbl" onclick="viewDetail(${r.id_doc_gia})">Chi tiết</button><button class="btn-tbl" onclick="openEdit(${r.id_doc_gia})">Sửa</button><button class="btn-tbl" onclick="giaHan(${r.id_doc_gia})">Gia hạn</button><button class="btn-tbl danger" onclick="toggleCard(${r.id_doc_gia},'${r.trang_thai}')">${r.trang_thai==='active'?'Khóa':'Mở'}</button><button class="btn-tbl danger" onclick="delReader(${r.id_doc_gia},'${r.ho_ten.replace(/'/g,"\\'")}')">Xóa</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Không có độc giả nào</div>';
+  }catch(e){document.getElementById('tbl-wrap').innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+function openAdd(){editId=null;document.getElementById('rmodal-title').textContent='ĐĂNG KÝ ĐỘC GIẢ MỚI';['r-name','r-phone','r-email','r-addr','r-user','r-pass'].forEach(id=>document.getElementById(id).value='');openModal('reader-modal');}
+async function openEdit(id){editId=id;try{const r=await api.get('/readers/'+id);document.getElementById('rmodal-title').textContent='CHỈNH SỬA ĐỘC GIẢ';document.getElementById('r-name').value=r.ho_ten;document.getElementById('r-phone').value=r.sdt||'';document.getElementById('r-email').value=r.email||'';document.getElementById('r-addr').value=r.dia_chi||'';document.getElementById('r-plan').value=r.id_goi_the;openModal('reader-modal');}catch(e){toast(e.message,'error');}}
+async function saveReader(){
+  const name=document.getElementById('r-name').value.trim();if(!name){toast('Thiếu họ tên','error');return;}
+  const body={ho_ten:name,sdt:document.getElementById('r-phone').value,email:document.getElementById('r-email').value,dia_chi:document.getElementById('r-addr').value,id_goi_the:parseInt(document.getElementById('r-plan').value),ten_dang_nhap:document.getElementById('r-user').value||null,mat_khau:document.getElementById('r-pass').value||null};
+  setLoading('#rsave-btn',true);try{if(editId)await api.put('/readers/'+editId,body);else await api.post('/readers',body);toast(editId?'Cập nhật thành công':'Đăng ký thẻ thành công','success');closeModal('reader-modal');load();}catch(e){toast(e.message,'error');}finally{setLoading('#rsave-btn',false);}
+}
+async function giaHan(id){if(!await confirm2('Gia hạn thẻ thêm 12 tháng?'))return;try{await api.patch('/readers/'+id+'/gia-han',{so_thang:12});toast('Đã gia hạn 12 tháng','success');load();}catch(e){toast(e.message,'error');}}
+async function toggleCard(id,tt){const action=tt==='active'?'khóa':'mở';if(!await confirm2(`Xác nhận ${action} thẻ độc giả này?`))return;try{await api.patch('/readers/'+id+'/khoa-the',{trang_thai:tt==='active'?'locked':'active'});toast(`Đã ${action} thẻ`,'success');load();}catch(e){toast(e.message,'error');}}
+
+async function delReader(id,name){
+  if(!await confirm2(`Xóa độc giả "${name}"?\nChỉ xóa được khi không còn sách đang mượn và không còn phạt chưa trả.`))return;
+  try{await api.delete('/readers/'+id);toast('Đã xóa độc giả','success');load();}catch(e){toast(e.message,'error');}
+}
+
+async function viewDetail(id){
+  openModal('detail-modal');
+  const body=document.getElementById('detail-body');
+  body.innerHTML='<div class="empty">Đang tải...</div>';
+  try{
+    const d=await api.get('/readers/'+id+'/lich-su');
+    const r=d.reader, st=d.stats;
+    document.getElementById('detail-title').textContent='QUÁ TRÌNH — '+r.ho_ten.toUpperCase();
+    body.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+        <div class="fg" style="margin:0"><label>HỌ TÊN</label><div style="font-family:'Cormorant Garamond',serif;font-size:16px">${r.ho_ten}</div></div>
+        <div class="fg" style="margin:0"><label>GÓI THẺ</label><div style="color:var(--gold)">${r.ten_goi} (tối đa ${r.so_sach_toi_da} cuốn)</div></div>
+        <div class="fg" style="margin:0"><label>SĐT</label><div>${r.sdt||'—'}</div></div>
+        <div class="fg" style="margin:0"><label>EMAIL</label><div>${r.email||'—'}</div></div>
+        <div class="fg" style="margin:0"><label>HẠN THẺ</label><div style="color:${new Date(r.ngay_het_han)<new Date()?'#c97272':'var(--ink)'}">${fmtDate(r.ngay_het_han)}</div></div>
+        <div class="fg" style="margin:0"><label>TRẠNG THÁI</label><div>${statusBadge(r.trang_thai)}</div></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <div style="flex:1;background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.18);padding:12px;text-align:center">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--gold)">${st.tong_luot_muon}</div>
+          <div style="font-size:10px;color:var(--ink2);font-family:'Cinzel',serif;letter-spacing:1px">TỔNG LƯỢT MƯỢN</div></div>
+        <div style="flex:1;background:rgba(201,114,114,.06);border:1px solid rgba(201,114,114,.18);padding:12px;text-align:center">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c97272">${st.so_qua_han}</div>
+          <div style="font-size:10px;color:var(--ink2);font-family:'Cinzel',serif;letter-spacing:1px">LẦN QUÁ HẠN</div></div>
+        <div style="flex:1;background:rgba(201,114,114,.06);border:1px solid rgba(201,114,114,.18);padding:12px;text-align:center">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#c97272">${fmtMoney(st.tong_tien_phat)}</div>
+          <div style="font-size:10px;color:var(--ink2);font-family:'Cinzel',serif;letter-spacing:1px">TỔNG PHẠT</div></div>
+      </div>
+      <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--gold);margin-bottom:10px">LỊCH SỬ MƯỢN (${d.borrows.length})</div>
+      <div style="max-height:200px;overflow-y:auto">
+        ${d.borrows.length?`<table><thead><tr><th>MÃ</th><th>SÁCH</th><th>NGÀY MƯỢN</th><th>HẠN</th><th>TT</th></tr></thead><tbody>${d.borrows.map(b=>`<tr><td style="color:var(--gold)">#${b.id_phieu_muon}</td><td style="font-size:12px">${b.sach_list}</td><td style="color:var(--ink2)">${fmtDate(b.ngay_muon)}</td><td>${fmtDate(b.hen_tra)}</td><td>${statusBadge(b.trang_thai)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Chưa mượn lần nào</div>'}
+      </div>`;
+  }catch(e){body.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+init();
+</script>
+</body>
+</html>

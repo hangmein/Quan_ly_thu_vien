@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Danh mục — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+<script>
+// Helper tạo mini-form thêm nhanh
+function miniForm(placeholder, onAdd) {
+  return `<div style="display:flex;gap:8px;margin-bottom:14px">
+    <input class="inp" placeholder="${placeholder}" id="add-${placeholder}" style="flex:1">
+    <button class="tb-btn primary" onclick="(${onAdd.toString()})()">Thêm</button>
+  </div>`;
+}
+
+async function init(){
+  const c=document.getElementById('content');
+  c.innerHTML=`
+    <div class="two-col">
+      <div class="card"><div class="card-head"><span class="card-title">THỂ LOẠI SÁCH</span></div>
+        ${miniForm('Tên thể loại', async function(){const v=document.getElementById('add-Tên thể loại').value.trim();if(!v)return;try{await api.post('/catalog/the-loai',{ten_the_loai:v});toast('Đã thêm','success');init();}catch(e){toast(e.message,'error');}})}
+        <div id="tl-tbl"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">TÁC GIẢ</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input class="inp" id="add-tg-name" placeholder="Họ tên tác giả" style="flex:1">
+          <input class="inp" id="add-tg-nat" placeholder="Quốc tịch" style="width:100px">
+          <button class="tb-btn primary" onclick="addAuthor()">Thêm</button>
+        </div>
+        <div id="tg-tbl"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">NHÀ XUẤT BẢN</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input class="inp" id="add-nxb-name" placeholder="Tên NXB" style="flex:1">
+          <input class="inp" id="add-nxb-addr" placeholder="Địa chỉ" style="width:120px">
+          <button class="tb-btn primary" onclick="addNXB()">Thêm</button>
+        </div>
+        <div id="nxb-tbl"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">GÓI THẺ THÀNH VIÊN</span></div>
+        <div id="plan-tbl"></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--ink2);font-style:italic;font-family:'Cormorant Garamond',serif">Gói thẻ được cấu hình trong database. Liên hệ admin để thay đổi.</div>
+      </div>
+    </div>`;
+
+  loadAll();
+}
+
+async function loadAll(){
+  try{
+    const [tls,tgs,nxbs,plans]=await Promise.all([
+      api.get('/catalog/the-loai'),api.get('/catalog/tac-gia'),
+      api.get('/catalog/nxb'),api.get('/catalog/goi-the')
+    ]);
+    document.getElementById('tl-tbl').innerHTML=`<table><thead><tr><th>ID</th><th>TÊN</th><th></th></tr></thead><tbody>${tls.map(t=>`<tr><td style="color:var(--ink2)">${t.id_the_loai}</td><td>${t.ten_the_loai}</td><td><button class="btn-tbl danger" onclick="del('/catalog/the-loai/${t.id_the_loai}','${t.ten_the_loai.replace(/'/g,"\\'")}')">Xóa</button></td></tr>`).join('')}</tbody></table>`;
+    document.getElementById('tg-tbl').innerHTML=`<table><thead><tr><th>ID</th><th>HỌ TÊN</th><th>QUỐC TỊCH</th><th></th></tr></thead><tbody>${tgs.map(t=>`<tr><td style="color:var(--ink2)">${t.id_tac_gia}</td><td>${t.ho_ten}</td><td style="color:var(--ink2)">${t.quoc_tich||'—'}</td><td><button class="btn-tbl danger" onclick="del('/catalog/tac-gia/${t.id_tac_gia}','${t.ho_ten.replace(/'/g,"\\'")}')">Xóa</button></td></tr>`).join('')}</tbody></table>`;
+    document.getElementById('nxb-tbl').innerHTML=`<table><thead><tr><th>ID</th><th>TÊN NXB</th><th>ĐỊA CHỈ</th><th></th></tr></thead><tbody>${nxbs.map(n=>`<tr><td style="color:var(--ink2)">${n.id_nxb}</td><td>${n.ten_nxb}</td><td style="color:var(--ink2)">${n.dia_chi||'—'}</td><td><button class="btn-tbl danger" onclick="del('/catalog/nxb/${n.id_nxb}','${n.ten_nxb.replace(/'/g,"\\'")}')">Xóa</button></td></tr>`).join('')}</tbody></table>`;
+    document.getElementById('plan-tbl').innerHTML=`<table><thead><tr><th>GÓI</th><th>SỐ SÁCH</th><th>NGÀY</th><th>PHÍ/THÁNG</th></tr></thead><tbody>${plans.map(p=>`<tr><td style="color:var(--gold)">${p.ten_goi}</td><td>${p.so_sach_toi_da}</td><td>${p.so_ngay_muon}</td><td style="color:var(--gold)">${fmtMoney(p.phi_thang)}</td></tr>`).join('')}</tbody></table>`;
+  }catch(e){toast(e.message,'error');}
+}
+
+async function addAuthor(){const n=document.getElementById('add-tg-name').value.trim(),nat=document.getElementById('add-tg-nat').value.trim();if(!n){toast('Thiếu tên tác giả','error');return;}try{await api.post('/catalog/tac-gia',{ho_ten:n,quoc_tich:nat||null});toast('Đã thêm tác giả','success');document.getElementById('add-tg-name').value='';document.getElementById('add-tg-nat').value='';loadAll();}catch(e){toast(e.message,'error');}}
+async function addNXB(){const n=document.getElementById('add-nxb-name').value.trim(),addr=document.getElementById('add-nxb-addr').value.trim();if(!n){toast('Thiếu tên NXB','error');return;}try{await api.post('/catalog/nxb',{ten_nxb:n,dia_chi:addr||null});toast('Đã thêm NXB','success');document.getElementById('add-nxb-name').value='';document.getElementById('add-nxb-addr').value='';loadAll();}catch(e){toast(e.message,'error');}}
+async function del(path,name){if(!await confirm2(`Xóa "${name}"?`))return;try{await api.delete(path);toast('Đã xóa','success');loadAll();}catch(e){toast(e.message,'error');}}
+
+init();
+</script>
+</body>
+</html>

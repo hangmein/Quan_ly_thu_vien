@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nhân viên — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+<div class="modal-back" id="staff-modal">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-ttl" id="smodal-title">THÊM NHÂN VIÊN</span><button class="modal-x" onclick="closeModal('staff-modal')">✕</button></div>
+    <div class="modal-bd">
+      <div class="row2"><div class="fg"><label>HỌ TÊN *</label><input class="inp" id="s-name" placeholder="Nguyễn Thị Lan"></div><div class="fg"><label>CHỨC VỤ</label><select class="inp" id="s-role"><option value="Thủ thư">Thủ thư</option><option value="Quản lý kho">Quản lý kho</option><option value="Kế toán">Kế toán</option></select></div></div>
+      <div class="row2"><div class="fg"><label>SĐT</label><input class="inp" id="s-phone" placeholder="09xxxxxxxx"></div><div class="fg"><label>EMAIL</label><input class="inp" id="s-email" placeholder="email@..."></div></div>
+      <div class="row2"><div class="fg"><label>TÊN ĐĂNG NHẬP *</label><input class="inp" id="s-user" placeholder="username"></div><div class="fg"><label>MẬT KHẨU *</label><input class="inp" type="password" id="s-pass" placeholder="Mật khẩu"></div></div>
+      <div class="fg"><label>NGÀY VÀO LÀM</label><input class="inp" type="date" id="s-date"></div>
+    </div>
+    <div class="modal-ft"><button class="modal-btn" onclick="closeModal('staff-modal')">Hủy</button><button class="modal-btn save" id="ssave-btn" onclick="saveStaff()">Lưu</button></div>
+  </div>
+</div>
+<script>
+document.getElementById('topbar-actions').insertAdjacentHTML('beforeend',`<button class="tb-btn primary" onclick="openAdd()">+ Thêm nhân viên</button>`);
+document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
+let editId=null;
+async function load(){
+  const c=document.getElementById('content');
+  c.innerHTML=`<div class="card"><div class="card-head"><span class="card-title">DANH SÁCH NHÂN VIÊN</span></div><div id="tbl-wrap"><div class="empty">Đang tải...</div></div></div>`;
+  try{
+    const data=await api.get('/staff');
+    document.getElementById('tbl-wrap').innerHTML=data.length?`<table><thead><tr><th>ID</th><th>HỌ TÊN</th><th>CHỨC VỤ</th><th>SĐT</th><th>EMAIL</th><th>VÀO LÀM</th><th>PHIẾU ĐÃ LẬP</th><th></th></tr></thead><tbody>${data.map(s=>`<tr><td style="color:var(--ink2)">${s.id_nhan_vien}</td><td><strong>${s.ho_ten}</strong></td><td style="color:var(--gold)">${s.chuc_vu}</td><td>${s.sdt||'—'}</td><td style="color:var(--ink2)">${s.email||'—'}</td><td style="color:var(--ink2)">${fmtDate(s.ngay_vao_lam)}</td><td style="color:var(--gold)">${s.so_phieu_lap}</td><td><button class="btn-tbl" onclick="openEdit(${s.id_nhan_vien})">Sửa</button><button class="btn-tbl danger" onclick="retire(${s.id_nhan_vien},'${s.ho_ten.replace(/'/g,"\\'")}')">Nghỉ việc</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Chưa có nhân viên</div>';
+  }catch(e){document.getElementById('tbl-wrap').innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+function openAdd(){editId=null;document.getElementById('smodal-title').textContent='THÊM NHÂN VIÊN';['s-name','s-user','s-pass','s-phone','s-email'].forEach(id=>document.getElementById(id).value='');openModal('staff-modal');}
+async function openEdit(id){editId=id;try{const s=(await api.get('/staff')).find(x=>x.id_nhan_vien===id);if(!s)return;document.getElementById('smodal-title').textContent='CHỈNH SỬA NHÂN VIÊN';document.getElementById('s-name').value=s.ho_ten;document.getElementById('s-phone').value=s.sdt||'';document.getElementById('s-email').value=s.email||'';document.getElementById('s-role').value=s.chuc_vu;openModal('staff-modal');}catch(e){toast(e.message,'error');}}
+async function saveStaff(){
+  const name=document.getElementById('s-name').value.trim();if(!name){toast('Thiếu họ tên','error');return;}
+  setLoading('#ssave-btn',true);
+  try{
+    if(editId) await api.put('/staff/'+editId,{ho_ten:name,sdt:document.getElementById('s-phone').value,email:document.getElementById('s-email').value,chuc_vu:document.getElementById('s-role').value});
+    else await api.post('/staff',{ho_ten:name,sdt:document.getElementById('s-phone').value,email:document.getElementById('s-email').value,chuc_vu:document.getElementById('s-role').value,ngay_vao_lam:document.getElementById('s-date').value,ten_dang_nhap:document.getElementById('s-user').value,mat_khau:document.getElementById('s-pass').value});
+    toast('Lưu thành công','success');closeModal('staff-modal');load();
+  }catch(e){toast(e.message,'error');}finally{setLoading('#ssave-btn',false);}
+}
+async function retire(id,name){if(!await confirm2(`Cho nhân viên "${name}" nghỉ việc?\nTài khoản sẽ bị vô hiệu hóa nhưng lịch sử giữ nguyên.`))return;try{await api.patch('/staff/'+id+'/nghi-viec',{});toast('Đã vô hiệu hóa tài khoản','success');load();}catch(e){toast(e.message,'error');}}
+load();
+</script>
+</body>
+</html>

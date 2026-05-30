@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tổng quan — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e;--gold2:#e6c989}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:110px;padding-top:8px}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;background:rgba(201,169,110,.12);border-top:2px solid var(--gold);transition:height .6s ease;min-height:4px}
+.bar-label{font-family:'Cinzel',serif;font-size:9px;color:var(--ink2);letter-spacing:1px}
+.bar-val{font-family:'Cormorant Garamond',serif;font-size:11px;color:var(--gold)}
+.two-col{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
+</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+<script>
+const c = document.getElementById('content');
+
+async function init() {
+  c.innerHTML = `
+    <div class="stat-grid" id="stats-grid">
+      ${['TỔNG ĐẦU SÁCH','THÀNH VIÊN','ĐANG MƯỢN','DOANH THU PHẠT'].map(l=>`
+      <div class="stat-card"><div class="stat-label">${l}</div>
+        <div class="stat-val">…</div><div class="stat-note">đang tải</div></div>`).join('')}
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-head"><span class="card-title">MƯỢN SÁCH 7 NGÀY QUA</span></div>
+        <div class="bar-chart" id="bar-chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">PHIẾU MƯỢN GẦN ĐÂY</span>
+          <a href="/admin/borrow.html" class="tb-btn">Xem tất cả</a></div>
+        <table><thead><tr><th>ĐỘC GIẢ</th><th>SÁCH</th><th>HẠN TRẢ</th><th>TT</th></tr></thead>
+        <tbody id="recent-tbl"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="card-head"><span class="card-title">TOP SÁCH MƯỢN NHIỀU</span></div>
+      <table><thead><tr><th>#</th><th>TÊN SÁCH</th><th>TÁC GIẢ</th><th>THỂ LOẠI</th><th>LƯỢT MƯỢN</th><th>TỒN KHO</th></tr></thead>
+      <tbody id="top-tbl"></tbody></table>
+    </div>`;
+
+  // Load tổng quan
+  try {
+    const s = await api.get('/stats/tong-quan');
+    const grid = document.getElementById('stats-grid');
+    grid.children[0].querySelector('.stat-val').textContent = s.tong_sach?.toLocaleString() || '—';
+    grid.children[0].querySelector('.stat-note').textContent = `${s.ton_kho} bản còn`;
+    grid.children[1].querySelector('.stat-val').textContent = s.doc_gia_active?.toLocaleString() || '—';
+    grid.children[1].querySelector('.stat-note').textContent = 'đang hoạt động';
+    grid.children[2].querySelector('.stat-val').textContent = s.dang_muon || '—';
+    grid.children[2].querySelector('.stat-note').className = 'stat-note dn';
+    grid.children[2].querySelector('.stat-note').textContent = `${s.qua_han} quá hạn`;
+    grid.children[3].querySelector('.stat-val').textContent = fmtMoney(s.doanh_thu_phat_thang);
+    grid.children[3].querySelector('.stat-note').textContent = 'tháng này';
+  } catch(e) { toast(e.message,'error'); }
+
+  // Biểu đồ 7 ngày
+  try {
+    const days = await api.get('/stats/muon-theo-ngay?ngay=7');
+    const max = Math.max(...days.map(d=>d.so_phieu), 1);
+    document.getElementById('bar-chart').innerHTML = days.map(d=>`
+      <div class="bar-wrap">
+        <div class="bar-val">${d.so_phieu}</div>
+        <div class="bar" style="height:${(d.so_phieu/max*100)}px"></div>
+        <div class="bar-label">${new Date(d.ngay).toLocaleDateString('vi-VN',{weekday:'short'})}</div>
+      </div>`).join('');
+  } catch(e){}
+
+  // Phiếu mượn gần đây
+  try {
+    const borrows = await api.get('/borrows?&limit=6');
+    document.getElementById('recent-tbl').innerHTML = borrows.slice(0,6).map(b=>`
+      <tr>
+        <td>${b.doc_gia}</td>
+        <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.sach_list}</td>
+        <td style="color:${b.trang_thai==='overdue'?'#c97272':'#8a7a60'}">${fmtDate(b.hen_tra)}</td>
+        <td>${statusBadge(b.trang_thai)}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="empty">Chưa có dữ liệu</td></tr>';
+  } catch(e){}
+
+  // Top sách
+  try {
+    const top = await api.get('/stats/sach-muon-nhieu?top=8');
+    document.getElementById('top-tbl').innerHTML = top.map((b,i)=>`
+      <tr>
+        <td style="color:var(--gold)">${i+1}</td>
+        <td><strong>${b.tieu_de}</strong></td>
+        <td style="color:var(--ink2)">${b.tac_gia}</td>
+        <td>${statusBadge('available').replace('CÒN',b.ten_the_loai)}</td>
+        <td style="color:var(--gold)">${b.luot_muon}</td>
+        <td style="color:${b.so_luong_ton===0?'#c97272':b.so_luong_ton<=1?'#c9a96e':'#8fc972'}">${b.so_luong_ton}/${b.so_luong_tong}</td>
+      </tr>`).join('') || '<tr><td colspan="6" class="empty">Chưa có dữ liệu</td></tr>';
+  } catch(e){}
+}
+
+init();
+</script>
+</body>
+</html>

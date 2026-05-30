@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Độc giả vi phạm — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e;--red:#c97272}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+@media print{body *{visibility:hidden}#print-area,#print-area *{visibility:visible}#print-area{position:absolute;left:0;top:0;width:100%;background:#fff;color:#000;padding:40px}}
+</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+<div id="print-area" style="display:none"></div>
+<script>
+let data=[];
+async function init(){
+  const c=document.getElementById('content');
+  c.innerHTML=`
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">DANH SÁCH ĐỘC GIẢ VI PHẠM</span>
+        <button class="tb-btn primary" onclick="printReport()">🖶 Xuất báo cáo</button>
+      </div>
+      <div style="font-size:13px;color:var(--ink2);font-family:'Cormorant Garamond',serif;font-style:italic;margin-bottom:16px">
+        Bao gồm độc giả đang có sách quá hạn hoặc còn khoản phạt chưa thanh toán.
+      </div>
+      <div id="tbl"><div class="empty">Đang tải...</div></div>
+    </div>`;
+  load();
+}
+
+async function load(){
+  const el=document.getElementById('tbl');
+  try{
+    data=await api.get('/readers-vi-pham');
+    el.innerHTML=data.length?`<table><thead><tr><th>ID</th><th>HỌ TÊN</th><th>LIÊN HỆ</th><th>GÓI THẺ</th><th>PHIẾU QUÁ HẠN</th><th>PHẠT CHƯA TRẢ</th><th>TỔNG TIỀN PHẠT</th><th>TT</th></tr></thead><tbody>${data.map(r=>`<tr><td style="color:var(--ink2)">${r.id_doc_gia}</td><td><strong>${r.ho_ten}</strong></td><td style="font-size:12px;color:var(--ink2)">${r.sdt||''}<br>${r.email||''}</td><td style="color:var(--gold)">${r.ten_goi}</td><td style="text-align:center;color:${r.so_phieu_qua_han>0?'#c97272':'var(--ink2)'}">${r.so_phieu_qua_han}</td><td style="text-align:center;color:${r.so_phat_chua_tra>0?'#c97272':'var(--ink2)'}">${r.so_phat_chua_tra}</td><td style="color:#c97272">${fmtMoney(r.tong_tien_phat)}</td><td>${statusBadge(r.trang_thai)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Không có độc giả nào vi phạm — thư viện rất ổn!</div>';
+  }catch(e){el.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+
+function printReport(){
+  if(!data.length){toast('Không có dữ liệu để xuất','error');return;}
+  const tongTien=data.reduce((s,r)=>s+Number(r.tong_tien_phat),0);
+  document.getElementById('print-area').innerHTML=`
+    <div style="font-family:Georgia,serif">
+      <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:14px;margin-bottom:20px">
+        <div style="font-size:13px;letter-spacing:2px">THƯ VIỆN BIBLIOTHECA</div>
+        <h2 style="font-size:22px;margin:8px 0">BÁO CÁO ĐỘC GIẢ VI PHẠM</h2>
+        <div style="font-size:12px">Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f4f0e8">
+          <th style="border:1px solid #000;padding:8px">STT</th>
+          <th style="border:1px solid #000;padding:8px">Họ tên</th>
+          <th style="border:1px solid #000;padding:8px">Liên hệ</th>
+          <th style="border:1px solid #000;padding:8px">Quá hạn</th>
+          <th style="border:1px solid #000;padding:8px">Phạt chưa trả</th>
+          <th style="border:1px solid #000;padding:8px">Tổng tiền phạt</th>
+        </tr></thead>
+        <tbody>${data.map((r,i)=>`<tr>
+          <td style="border:1px solid #000;padding:8px;text-align:center">${i+1}</td>
+          <td style="border:1px solid #000;padding:8px">${r.ho_ten}</td>
+          <td style="border:1px solid #000;padding:8px">${r.sdt||'—'}</td>
+          <td style="border:1px solid #000;padding:8px;text-align:center">${r.so_phieu_qua_han}</td>
+          <td style="border:1px solid #000;padding:8px;text-align:center">${r.so_phat_chua_tra}</td>
+          <td style="border:1px solid #000;padding:8px;text-align:right">${Number(r.tong_tien_phat).toLocaleString('vi-VN')} đ</td>
+        </tr>`).join('')}</tbody>
+        <tfoot><tr style="background:#f4f0e8;font-weight:bold">
+          <td colspan="5" style="border:1px solid #000;padding:8px;text-align:right">TỔNG CỘNG</td>
+          <td style="border:1px solid #000;padding:8px;text-align:right">${tongTien.toLocaleString('vi-VN')} đ</td>
+        </tr></tfoot>
+      </table>
+      <p style="margin-top:30px;text-align:right;font-style:italic">Người lập báo cáo</p>
+    </div>`;
+  window.print();
+}
+
+init();
+</script>
+</body>
+</html>

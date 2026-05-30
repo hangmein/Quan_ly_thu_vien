@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trang cá nhân — BIBLIOTHECA</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--ink3:#5a4d3a;--gold:#c9a96e;--gold2:#e6c989;--border:rgba(201,169,110,.18);--ok:#8fc972;--err:#c97272}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;min-height:100vh}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 60px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,8,6,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.logo{font-family:'Cinzel',serif;font-weight:800;font-size:20px;letter-spacing:4px;color:var(--ink);text-decoration:none}
+.logo::before{content:'◆  ';color:var(--gold);font-size:12px}
+.nav-r{display:flex;gap:12px;align-items:center}
+.nav-btn{padding:8px 18px;background:transparent;border:1px solid var(--border);color:var(--ink2);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .3s;text-decoration:none}
+.nav-btn:hover{border-color:var(--gold);color:var(--gold)}
+.nav-btn.danger:hover{border-color:#c97272;color:#c97272}
+.wrap{max-width:1100px;margin:0 auto;padding:100px 24px 60px}
+.hero-band{background:var(--bg1);border:1px solid var(--border);padding:32px;margin-bottom:24px;display:flex;align-items:center;gap:24px}
+.avatar{width:64px;height:64px;background:rgba(201,169,110,.15);border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;font-family:'Cinzel',serif;font-size:24px;color:var(--gold);flex-shrink:0}
+.user-name{font-family:'Cinzel',serif;font-size:20px;letter-spacing:3px;color:var(--ink)}
+.user-meta{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--ink2);margin-top:4px}
+.plan-badge{padding:4px 14px;background:rgba(201,169,110,.12);border:1px solid var(--border);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold);margin-left:auto}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap}
+.tab{padding:12px 24px;background:transparent;border:none;color:var(--ink2);font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;cursor:pointer;border-bottom:2px solid transparent;transition:all .3s}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--bg1);border:1px solid var(--border);padding:22px;margin-bottom:18px}
+.card-title{font-family:'Cinzel',serif;font-size:12px;letter-spacing:3px;color:var(--ink);margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+th{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--gold);padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:11px 12px;font-size:13px;border-bottom:1px solid rgba(201,169,110,.06);color:var(--ink)}
+tr:hover td{background:rgba(201,169,110,.03)}
+.empty{text-align:center;padding:40px;color:var(--ink2);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px}
+
+/* --- Form thông tin cá nhân --- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:680px){.grid2{grid-template-columns:1fr}}
+.field{margin-bottom:18px}
+.field label{display:block;font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--gold);margin-bottom:8px}
+.field input,.field textarea{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--ink);padding:12px 14px;font-family:'Inter',sans-serif;font-size:14px;transition:border-color .3s;border-radius:2px}
+.field textarea{resize:vertical;min-height:64px}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--gold)}
+.field input::placeholder,.field textarea::placeholder{color:var(--ink3)}
+.hint{font-size:11px;color:var(--ink3);margin-top:6px;font-family:'Cormorant Garamond',serif;font-style:italic}
+.readonly-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(201,169,110,.06)}
+.readonly-row:last-child{border-bottom:none}
+.readonly-row .k{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--ink2);align-self:center}
+.readonly-row .v{font-size:13px;color:var(--ink)}
+.btn-row{display:flex;gap:12px;margin-top:8px}
+.btn{padding:11px 28px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .3s;border:1px solid var(--border);background:transparent;color:var(--ink2)}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn-save{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold2)}
+.btn-save:hover{background:rgba(201,169,110,.28)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.msg{padding:12px 16px;margin-bottom:18px;font-size:14px;font-family:'Cormorant Garamond',serif;font-style:italic;display:none;border-radius:2px}
+.msg.show{display:block}
+.msg.ok{border:1px solid rgba(143,201,114,.3);color:var(--ok);background:rgba(143,201,114,.06)}
+.msg.err{border:1px solid rgba(201,114,114,.3);color:var(--err);background:rgba(201,114,114,.06)}
+.lock-note{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--ink3);margin-bottom:16px}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="logo">BIBLIOTHECA</a>
+  <div class="nav-r">
+    <a href="/" class="nav-btn">← Trang chủ</a>
+    <button class="nav-btn danger" onclick="logout()">Đăng xuất</button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="hero-band" id="user-band">
+    <div class="avatar" id="av">?</div>
+    <div>
+      <div class="user-name" id="uname">Đang tải...</div>
+      <div class="user-meta" id="umeta"></div>
+    </div>
+    <div class="plan-badge" id="uplan">…</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('info',this)">THÔNG TIN CÁ NHÂN</button>
+    <button class="tab" onclick="switchTab('borrows',this)">LỊCH SỬ MƯỢN</button>
+    <button class="tab" onclick="switchTab('reserved',this)">ĐÃ ĐẶT TRƯỚC</button>
+    <button class="tab" onclick="switchTab('fines',this)">PHIẾU PHẠT</button>
+  </div>
+
+  <!-- TAB: THÔNG TIN CÁ NHÂN -->
+  <div class="panel active" id="panel-info">
+    <div class="grid2">
+      <div class="card" style="align-self:start">
+        <div class="card-title">HỒ SƠ CÁ NHÂN</div>
+        <div class="lock-note">Các thông tin liên hệ của bạn được bảo mật. Nếu có thay đổi, vui lòng liên hệ Thủ thư tại quầy.</div>
+
+        <div class="readonly-row"><span class="k">HỌ VÀ TÊN</span><span class="v" id="r-hoten">—</span></div>
+        <div class="readonly-row"><span class="k">SỐ ĐIỆN THOẠI</span><span class="v" id="r-sdt">—</span></div>
+        <div class="readonly-row"><span class="k">EMAIL</span><span class="v" id="r-email">—</span></div>
+        <div class="readonly-row"><span class="k">ĐỊA CHỈ</span><span class="v" style="text-align:right; max-width:60%;" id="r-diachi">—</span></div>
+      </div>
+
+      <div class="card" style="align-self:start">
+        <div class="card-title">THÔNG TIN THẺ THƯ VIỆN</div>
+        <div class="lock-note">Thông tin gói thẻ do hệ thống quản lý theo quy định của thư viện hoàng gia.</div>
+        
+        <div class="readonly-row"><span class="k">GÓI THẺ</span><span class="v" id="r-goi">—</span></div>
+        <div class="readonly-row"><span class="k">NGÀY ĐĂNG KÝ</span><span class="v" id="r-dangky">—</span></div>
+        <div class="readonly-row"><span class="k">HẠN THẺ</span><span class="v" id="r-hethan">—</span></div>
+        <div class="readonly-row"><span class="k">TRẠNG THÁI</span><span class="v" id="r-trangthai">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-borrows">
+    <div class="card">
+      <div class="card-title">LỊCH SỬ MƯỢN / TRẢ</div>
+      <div id="borrow-list"><div class="empty">Đang tải...</div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-reserved">
+    <div class="card">
+      <div class="card-title">SÁCH ĐÃ ĐẶT TRƯỚC</div>
+      <div id="reserve-list"><div class="empty">Đang tải...</div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-fines">
+    <div class="card">
+      <div class="card-title">PHIẾU PHẠT</div>
+      <div id="fine-list"><div class="empty">Đang tải...</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+if (!Auth.isLoggedIn()) window.location = '/login.html';
+const user = Auth.getUser();
+
+// Biến lưu trữ ID Độc giả của người đang đăng nhập
+let myReaderId = null;
+// Lưu bản ghi gốc để phục vụ chức năng Hoàn tác
+let myProfile = null;
+
+async function init() {
+  try {
+    // 1. Lấy thông tin độc giả (tìm theo id tài khoản)
+    const readers = await api.get('/readers');
+    const me = readers.find(r => r.id_tai_khoan == user?.id);
+
+    if (me) {
+      myReaderId = me.id_doc_gia; // Ghi nhớ mã độc giả để dùng cho các Tab bên dưới
+      myProfile = me;
+
+      document.getElementById('av').textContent = me.ho_ten[0].toUpperCase();
+      document.getElementById('uname').textContent = me.ho_ten;
+      document.getElementById('umeta').textContent = `${me.email||'Chưa có email'} · Hạn thẻ: ${fmtDate(me.ngay_het_han)}`;
+      document.getElementById('uplan').textContent = me.ten_goi;
+
+      fillInfoForm(me); // Đổ dữ liệu vào tab Thông tin cá nhân
+    }
+  } catch(e) {
+      console.error("Lỗi lấy thông tin:", e);
+  }
+}
+
+/* ---------- TAB: THÔNG TIN CÁ NHÂN ---------- */
+function fillInfoForm(me) {
+  // Điền dữ liệu vào cột Hồ sơ cá nhân (Chỉ đọc)
+  document.getElementById('r-hoten').textContent  = me.ho_ten  || '—';
+  document.getElementById('r-sdt').textContent    = me.sdt     || '—';
+  document.getElementById('r-email').textContent  = me.email   || '—';
+  document.getElementById('r-diachi').textContent = me.dia_chi || '—';
+
+  // Điền dữ liệu vào cột Thẻ thư viện (Chỉ đọc)
+  document.getElementById('r-goi').textContent       = me.ten_goi || '—';
+  document.getElementById('r-dangky').textContent    = fmtDate(me.ngay_dang_ky);
+  document.getElementById('r-hethan').textContent    = fmtDate(me.ngay_het_han);
+  document.getElementById('r-trangthai').innerHTML   = statusBadge(me.trang_thai);
+}
+
+function resetInfo() {
+  if (myProfile) fillInfoForm(myProfile);
+  showMsg('', '');
+}
+
+function showMsg(text, type) {
+  const box = document.getElementById('info-msg');
+  box.textContent = text;
+  box.className = 'msg' + (text ? ' show ' + type : '');
+}
+
+async function saveInfo() {
+  if (!myReaderId) return;
+
+  const ho_ten  = document.getElementById('f-hoten').value.trim();
+  const sdt     = document.getElementById('f-sdt').value.trim();
+  const email   = document.getElementById('f-email').value.trim();
+  const dia_chi = document.getElementById('f-diachi').value.trim();
+
+  // --- Kiểm tra dữ liệu ---
+  if (!ho_ten) { showMsg('Họ tên không được để trống.', 'err'); return; }
+  if (sdt && !/^0\d{9}$/.test(sdt)) {
+    showMsg('Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.', 'err'); return;
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showMsg('Email không hợp lệ.', 'err'); return;
+  }
+
+  const payload = { ho_ten, sdt, email, dia_chi };
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  showMsg('Đang lưu...', 'ok');
+
+  try {
+    // Gọi API cập nhật. Giả định backend có route PUT /readers/:id
+    await api.put(`/readers/${myReaderId}`, payload);
+
+    // Cập nhật lại bản ghi đang giữ + phần hiển thị phía trên
+    myProfile = { ...myProfile, ...payload };
+    document.getElementById('av').textContent   = ho_ten[0].toUpperCase();
+    document.getElementById('uname').textContent= ho_ten;
+    document.getElementById('umeta').textContent= `${email||'Chưa có email'} · Hạn thẻ: ${fmtDate(myProfile.ngay_het_han)}`;
+
+    showMsg('Đã cập nhật thông tin thành công.', 'ok');
+  } catch(e) {
+    showMsg('Lỗi khi lưu: ' + (e.message || 'không xác định'), 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---------- TAB: LỊCH SỬ MƯỢN ---------- */
+async function loadBorrows() {
+  if (!myReaderId) return; // Nếu chưa có ID thì không gọi API
+  try {
+    const data = await api.get(`/borrows?id_doc_gia=${myReaderId}`);
+
+    document.getElementById('borrow-list').innerHTML = data.length ? `
+      <table>
+        <thead><tr><th>MÃ PM</th><th>SÁCH MƯỢN</th><th>NGÀY MƯỢN</th><th>HẠN TRẢ</th><th>NGÀY TRẢ</th><th>TRẠNG THÁI</th></tr></thead>
+        <tbody>${data.map(b=>`
+          <tr>
+            <td style="color:var(--gold)">#${b.id_phieu_muon}</td>
+            <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${b.sach_list}</td>
+            <td style="color:var(--ink2)">${fmtDate(b.ngay_muon)}</td>
+            <td style="color:${b.trang_thai==='overdue'?'#c97272':'var(--ink2)'}; font-weight:${b.trang_thai==='overdue'?'bold':'normal'}">${fmtDate(b.hen_tra)}</td>
+            <td style="color:var(--ink2)">${b.ngay_tra?fmtDate(b.ngay_tra):'—'}</td>
+            <td>${statusBadge(b.trang_thai)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : '<div class="empty">Chưa có lịch sử mượn sách</div>';
+  } catch(e) { document.getElementById('borrow-list').innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+
+/* ---------- TAB: ĐÃ ĐẶT TRƯỚC ---------- */
+async function loadReserved() {
+  if (!myReaderId) return;
+  try {
+    const allData = await api.get('/borrows/dat-truoc');
+    const myData = allData.filter(r => r.id_doc_gia === myReaderId);
+
+    document.getElementById('reserve-list').innerHTML = myData.length ? `
+      <table>
+        <thead><tr><th>SÁCH</th><th>NGÀY ĐẶT</th><th>TỒN KHO</th><th>TRẠNG THÁI</th></tr></thead>
+        <tbody>${myData.map(r=>`
+          <tr>
+            <td>${r.sach}</td>
+            <td style="color:var(--ink2)">${fmtDate(r.ngay_dat)}</td>
+            <td style="color:${r.so_luong_ton>0?'#8fc972':'#c97272'}">${r.so_luong_ton>0?'CÒN SÁCH':'HẾT SÁCH'}</td>
+            <td>${statusBadge(r.trang_thai)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : '<div class="empty">Chưa có sách đặt trước</div>';
+  } catch(e) { document.getElementById('reserve-list').innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+
+/* ---------- TAB: PHIẾU PHẠT ---------- */
+async function loadFines() {
+  if (!myReaderId) return;
+  try {
+    const allData = await api.get('/fines');
+    const myData = allData.filter(f => f.id_doc_gia === myReaderId);
+
+    document.getElementById('fine-list').innerHTML = myData.length ? `
+      <table>
+        <thead><tr><th>LÝ DO</th><th>SỐ TIỀN</th><th>NGÀY LẬP</th><th>TRẠNG THÁI</th></tr></thead>
+        <tbody>${myData.map(f=>`
+          <tr>
+            <td>${f.ly_do}</td>
+            <td style="color:${f.trang_thai_thanh_toan==='unpaid'?'#c97272':'#8fc972'}">${fmtMoney(f.so_tien)}</td>
+            <td style="color:var(--ink2)">${fmtDate(f.ngay_lap)}</td>
+            <td>${statusBadge(f.trang_thai_thanh_toan)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : '<div class="empty">Không có phiếu phạt nào</div>';
+  } catch(e) { document.getElementById('fine-list').innerHTML = `<div class="empty">${e.message}</div>`; }
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+
+  if (name==='borrows')  loadBorrows();
+  if (name==='reserved') loadReserved();
+  if (name==='fines')    loadFines();
+}
+
+function logout() { Auth.clear(); window.location='/'; }
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIBLIOTHECA — Thư viện Hoàng gia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Cinzel:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0806; --bg1:#14100c; --bg2:#1c1612; --bg3:#241e18;
+  --ink:#e8dcc4; --ink2:#8a7a60; --ink3:#5a4d3a;
+  --gold:#c9a96e; --gold2:#e6c989; --gold3:rgba(201,169,110,.15);
+  --red:#c97272; --green:#8fc972;
+  --border:rgba(201,169,110,.18); --border2:rgba(201,169,110,.36);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+
+/* grain */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.8 0 0 0 0 0.7 0 0 0 0 0.5 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.5;mix-blend-mode:overlay}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 60px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to bottom,rgba(10,8,6,.96),rgba(10,8,6,.6));backdrop-filter:blur(14px);border-bottom:1px solid var(--border);transition:padding .3s}
+nav.scrolled{padding:14px 60px}
+.logo{font-family:'Cinzel',serif;font-weight:800;font-size:21px;letter-spacing:4px;color:var(--ink);display:flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none}
+.logo::before{content:'◆';color:var(--gold);font-size:13px}
+.nav-links{display:flex;gap:36px;list-style:none}
+.nav-links a{color:var(--ink2);text-decoration:none;font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;transition:color .3s;position:relative}
+.nav-links a:hover{color:var(--gold2)}
+.nav-links a::after{content:'';position:absolute;bottom:-6px;left:50%;width:0;height:1px;background:var(--gold);transition:all .4s}
+.nav-links a:hover::after{left:0;width:100%}
+.nav-right{display:flex;gap:10px;align-items:center}
+.nav-icon{width:34px;height:34px;border:1px solid var(--border);border-radius:2px;display:grid;place-items:center;color:var(--ink2);cursor:pointer;transition:all .3s;font-size:14px;background:transparent}
+.nav-icon:hover{border-color:var(--gold);color:var(--gold)}
+.nav-search-wrap{position:relative}
+.nav-search{display:none;position:absolute;right:0;top:46px;width:280px;background:var(--bg1);border:1px solid var(--border2);z-index:200}
+.nav-search.open{display:block}
+.nav-search input{width:100%;padding:13px 16px;background:transparent;border:none;color:var(--ink);font-family:'Inter',sans-serif;font-size:14px;outline:none}
+.nav-search input::placeholder{color:var(--ink3)}
+.search-results{max-height:320px;overflow-y:auto}
+.search-item{padding:12px 16px;cursor:pointer;border-top:1px solid var(--border);transition:background .2s;display:flex;gap:12px;align-items:center}
+.search-item:hover{background:var(--gold3)}
+.search-item-title{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--ink);font-weight:500}
+.search-item-sub{font-size:12px;color:var(--ink2)}
+.btn-user{padding:9px 20px;background:transparent;border:1px solid var(--border);color:var(--ink2);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;cursor:pointer;transition:all .3s;text-decoration:none}
+.btn-user:hover{border-color:var(--gold);color:var(--gold)}
+.btn-login{background:var(--gold);color:var(--bg);border-color:var(--gold);font-weight:700}
+.btn-login:hover{background:var(--gold2);color:var(--bg)}
+
+/* ── HERO ── */
+.hero{min-height:100vh;position:relative;padding:110px 60px 60px;display:flex;flex-direction:column;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at top,rgba(92,31,31,.25),transparent 60%),radial-gradient(ellipse at 60% 70%,rgba(201,169,110,.1),transparent 50%),linear-gradient(180deg,#1a1209 0%,#0a0806 70%,#000 100%);z-index:0}
+.hero-bg::before{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 80px,rgba(0,0,0,.4) 80px,rgba(0,0,0,.4) 82px),repeating-linear-gradient(0deg,transparent 0,transparent 60px,rgba(0,0,0,.3) 60px,rgba(0,0,0,.3) 62px);opacity:.2;mask-image:linear-gradient(to bottom,transparent,black 30%,black 70%,transparent)}
+.dust{position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none}
+.dust span{position:absolute;width:2px;height:2px;background:var(--gold2);border-radius:50%;animation:float linear infinite}
+@keyframes float{from{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:.8}90%{opacity:.8}to{transform:translateY(-10vh) translateX(50px);opacity:0}}
+.hero-brand{position:relative;z-index:2;text-align:center;margin-bottom:28px;animation:fadeDown 1s ease-out}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:8px;color:var(--gold);margin-bottom:10px}
+.hero-brand h1{font-family:'Cinzel',serif;font-size:clamp(38px,6vw,68px);font-weight:800;letter-spacing:clamp(6px,1vw,14px);color:var(--ink);text-shadow:0 0 50px rgba(201,169,110,.2)}
+.hero-divider{width:200px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:16px auto 0}
+
+/* ── SLIDESHOW ── */
+.slideshow{flex:1;position:relative;z-index:2;max-width:1400px;margin:0 auto;width:100%;min-height:540px}
+.slide{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1.2fr .4fr;gap:60px;align-items:center;opacity:0;visibility:hidden;transition:opacity 1.2s ease,visibility 1.2s}
+.slide.active{opacity:1;visibility:visible}
+.slide.active .slide-text{animation:slideInL 1.4s ease-out}
+.slide.active .slide-book{animation:slideInU 1.4s ease-out}
+@keyframes slideInL{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInU{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+.slide-text .slabel{font-family:'Cinzel',serif;font-size:12px;letter-spacing:6px;color:var(--gold);margin-bottom:14px}
+.slide-text h2{font-family:'Cormorant Garamond',serif;font-size:clamp(42px,5vw,70px);font-weight:500;line-height:1;color:var(--ink);margin-bottom:18px;letter-spacing:-1px}
+.slide-text .author{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:var(--ink2);margin-bottom:22px}
+.meta{display:flex;gap:22px;margin-bottom:22px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--ink3);flex-wrap:wrap}
+.meta span::before{content:'◆';color:var(--gold);margin-right:7px;font-size:7px}
+.desc{font-family:'Cormorant Garamond',serif;font-size:17px;line-height:1.7;color:var(--ink2);margin-bottom:32px;max-width:420px}
+.btn-primary{display:inline-block;padding:14px 42px;background:transparent;border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;letter-spacing:5px;text-transform:uppercase;cursor:pointer;transition:all .4s;text-decoration:none;position:relative;overflow:hidden}
+.btn-primary::before{content:'';position:absolute;inset:0;background:var(--gold);transform:translateY(100%);transition:transform .4s;z-index:-1}
+.btn-primary:hover{color:var(--bg)}
+.btn-primary:hover::before{transform:translateY(0)}
+.slide-book{position:relative;height:510px;display:grid;place-items:center}
+.slide-book::before{content:'';position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:70%;height:30px;background:radial-gradient(ellipse,rgba(0,0,0,.7),transparent 70%)}
+.book{width:280px;height:415px;border-radius:4px 8px 8px 4px;box-shadow:inset -4px 0 0 rgba(0,0,0,.4),inset 4px 0 0 rgba(201,169,110,.05),0 30px 60px rgba(0,0,0,.7),0 0 80px rgba(201,169,110,.12);position:relative;transform:rotateY(-15deg) rotateX(2deg);transition:transform .6s;cursor:pointer}
+.book:hover{transform:rotateY(-8deg) rotateX(2deg)}
+.book::before{content:'';position:absolute;left:18px;right:18px;top:18px;bottom:18px;border:1px solid rgba(201,169,110,.4);border-radius:2px}
+.book::after{content:'';position:absolute;left:30px;right:30px;top:30px;bottom:30px;border:1px solid rgba(201,169,110,.2)}
+.cover-1{background:linear-gradient(135deg,#3a2418,#2a1810,#1c0e07)}
+.cover-2{background:linear-gradient(135deg,#1a2030,#0e1420,#060a14)}
+.cover-3{background:linear-gradient(135deg,#2a1818,#1a0c0c,#0c0606)}
+.cover-4{background:linear-gradient(135deg,#1a2a1c,#0e1a10,#060c08)}
+.cover-5{background:linear-gradient(135deg,#2a1a30,#18102a,#0c0816)}
+.cover-6{background:linear-gradient(135deg,#2a2010,#1a1408,#0e0a04)}
+.book-content{position:absolute;inset:50px 30px;display:flex;flex-direction:column;justify-content:space-between;text-align:center}
+.book-emblem{font-size:46px;color:var(--gold);margin-top:16px}
+.book-title{font-family:'Cinzel',serif;font-size:20px;letter-spacing:4px;color:var(--gold2);line-height:1.2;text-shadow:0 0 20px rgba(201,169,110,.4)}
+.book-author-sm{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--ink2);letter-spacing:2px}
+.slide-thumbs{display:flex;flex-direction:column;gap:12px;justify-content:center;align-items:center}
+.thumb{width:60px;height:60px;border:1px solid var(--border);border-radius:50%;background:var(--bg2);display:grid;place-items:center;cursor:pointer;transition:all .3s;font-family:'Cinzel',serif;color:var(--ink2);font-size:13px;position:relative}
+.thumb:hover{border-color:var(--gold);color:var(--gold)}
+.thumb.active{border-color:var(--gold);color:var(--gold);box-shadow:0 0 28px rgba(201,169,110,.4)}
+.thumb.active::before{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid transparent;border-top-color:var(--gold2);border-right-color:var(--gold2);animation:spin 10s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.slide-controls{position:relative;z-index:2;margin-top:26px;display:flex;justify-content:center;align-items:center;gap:26px}
+.ctrl-btn{width:40px;height:40px;border:1px solid var(--border);background:transparent;color:var(--ink2);cursor:pointer;transition:all .3s;font-size:13px}
+.ctrl-btn:hover{border-color:var(--gold);color:var(--gold)}
+.slide-counter{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--ink2)}
+.slide-counter strong{color:var(--gold2);font-size:15px}
+
+/* ── GENRES ── */
+.genres-section{padding:100px 60px;background:linear-gradient(180deg,#000,#0d0a07 50%,#0a0806);position:relative;overflow:hidden}
+.genres-section::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 30%,rgba(92,31,31,.08),transparent 40%),radial-gradient(circle at 80% 70%,rgba(201,169,110,.06),transparent 40%)}
+.section-header{text-align:center;margin-bottom:60px;position:relative}
+.section-title{font-family:'Cinzel',serif;font-size:clamp(32px,5vw,56px);font-weight:800;letter-spacing:clamp(5px,1.2vw,14px);color:var(--ink);margin-bottom:14px}
+.orn{display:flex;align-items:center;justify-content:center;gap:14px;margin:18px 0}
+.orn-line{width:78px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.orn-line.r{background:linear-gradient(90deg,var(--gold),transparent)}
+.orn-diamond{color:var(--gold);font-size:11px}
+.section-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;color:var(--ink2);letter-spacing:2px}
+.genre-tabs{max-width:1260px;margin:0 auto 44px;display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+.genre-tab{padding:11px 24px;background:transparent;border:1px solid var(--border);color:var(--ink2);font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all .3s}
+.genre-tab .icon{margin-right:7px;color:var(--gold)}
+.genre-tab:hover{border-color:var(--border2);color:var(--ink)}
+.genre-tab.active{border-color:var(--gold);color:var(--gold2);background:var(--gold3)}
+.genre-panel{max-width:1260px;margin:0 auto;display:none;animation:fadeUp .5s ease-out}
+.genre-panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.panel-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.panel-info h3{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:500;color:var(--ink);margin-bottom:6px;letter-spacing:-.5px}
+.panel-info p{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--ink2);max-width:440px;line-height:1.6}
+.panel-count{font-family:'Cinzel',serif;font-size:10px;color:var(--ink2);letter-spacing:3px;text-align:right;white-space:nowrap}
+.panel-count strong{display:block;font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--gold);font-weight:600;margin-bottom:3px}
+.book-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:20px}
+.book-card{background:linear-gradient(180deg,var(--bg1),var(--bg2));border:1px solid var(--border);border-radius:2px;overflow:hidden;cursor:pointer;transition:all .4s}
+.book-card:hover{border-color:var(--gold);transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,0,0,.5),0 0 28px rgba(201,169,110,.1)}
+.bcover{height:220px;position:relative;display:grid;place-items:center;overflow:hidden}
+.cov-horror{background:linear-gradient(135deg,#2a0c0c,#160404)}
+.cov-drama{background:linear-gradient(135deg,#2a1a08,#160c04)}
+.cov-academic{background:linear-gradient(135deg,#0c1a2a,#040c16)}
+.cov-fantasy{background:linear-gradient(135deg,#1a0c2a,#0c0416)}
+.cov-classic{background:linear-gradient(135deg,#1a1a0c,#0c0c04)}
+.cov-mystery{background:linear-gradient(135deg,#0c1a18,#04100c)}
+.cov-default{background:linear-gradient(135deg,#1a1812,#0e0e08)}
+.bcover::before{content:'';position:absolute;inset:15px;border:1px solid rgba(201,169,110,.25)}
+.bcover::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 40%,rgba(201,169,110,.1),transparent 60%)}
+.bcc{position:relative;z-index:1;text-align:center;padding:24px 16px}
+.bce{font-family:'Cinzel',serif;font-size:26px;color:var(--gold);margin-bottom:10px;opacity:.8}
+.bct{font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;color:var(--gold2);line-height:1.3}
+.binfo{padding:15px 17px}
+.bi-title{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--ink);font-weight:600;margin-bottom:3px;line-height:1.3}
+.bi-author{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:12px;color:var(--ink2);margin-bottom:10px}
+.bi-foot{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--border)}
+.bs{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px}
+.bs.a{color:var(--green)}.bs.b{color:var(--red)}
+.br{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--gold)}
+.view-more{text-align:center;margin-top:44px}
+.btn-outline{display:inline-block;padding:13px 38px;background:transparent;border:1px solid var(--ink2);color:var(--ink);font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all .3s;text-decoration:none}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.loading-grid{display:flex;justify-content:center;align-items:center;height:200px;font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--ink2);font-size:16px}
+
+/* ── MODAL CHI TIẾT SÁCH ── */
+.modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto}
+.modal-back.open{display:flex}
+.book-modal{background:var(--bg1);border:1px solid var(--border2);width:700px;max-width:94vw;animation:fadeUp .3s ease-out}
+.bm-header{padding:28px 32px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start}
+.bm-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:500;color:var(--ink);line-height:1.2;max-width:500px}
+.bm-close{background:transparent;border:none;color:var(--ink2);cursor:pointer;font-size:20px;padding:4px 8px;transition:color .3s;flex-shrink:0}
+.bm-close:hover{color:var(--red)}
+.bm-body{padding:28px 32px;display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.bm-cover{height:280px;border-radius:2px;display:grid;place-items:center;position:relative}
+.bm-cover::before{content:'';position:absolute;inset:16px;border:1px solid rgba(201,169,110,.3)}
+.bm-cover-content{position:relative;z-index:1;text-align:center}
+.bm-cover-emblem{font-size:54px;color:var(--gold);margin-bottom:14px}
+.bm-cover-title{font-family:'Cinzel',serif;font-size:18px;letter-spacing:3px;color:var(--gold2);line-height:1.2}
+.bm-info .row{margin-bottom:14px}
+.bm-info .row label{font-family:'Cinzel',serif;font-size:9px;letter-spacing:3px;color:var(--gold);display:block;margin-bottom:4px}
+.bm-info .row .val{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--ink);line-height:1.5}
+.bm-desc{padding:0 32px 24px;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:var(--ink2);line-height:1.7;border-bottom:1px solid var(--border)}
+.bm-footer{padding:20px 32px;display:flex;gap:12px;align-items:center}
+.bm-status{flex:1;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px}
+.bm-status.a{color:var(--green)}.bm-status.b{color:var(--red)}
+
+/* ── FOOTER ── */
+footer{padding:54px 60px 36px;background:#050403;border-top:1px solid var(--border);text-align:center}
+.footer-orn{margin-bottom:20px;color:var(--gold);font-size:13px;letter-spacing:8px}
+.footer-text{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--ink3);letter-spacing:1px}
+.footer-links{display:flex;justify-content:center;gap:30px;margin-top:20px}
+.footer-links a{color:var(--ink3);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;text-decoration:none;transition:color .3s}
+.footer-links a:hover{color:var(--gold)}
+
+/* ── TOAST ── */
+#toast-wrap{position:fixed;bottom:24px;right:24px;z-index:9000;display:flex;flex-direction:column;gap:8px}
+.toast{padding:13px 20px;border-left:3px solid var(--gold);background:var(--bg1);font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.5);animation:slideIn .3s ease-out;min-width:240px}
+.toast.ok{border-left-color:var(--green);color:var(--green)}
+.toast.err{border-left-color:var(--red);color:var(--red)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){.book-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1024px){nav{padding:16px 24px}.nav-links{display:none}.hero{padding:88px 24px 40px}.slide{grid-template-columns:1fr;gap:34px;text-align:center}.slide-thumbs{flex-direction:row}.desc{margin-left:auto;margin-right:auto}.meta{justify-content:center}.genres-section{padding:80px 24px}.panel-header{flex-direction:column;align-items:flex-start;gap:18px}}
+@media(max-width:700px){.book-grid{grid-template-columns:1fr 1fr}.genre-tab{padding:10px 18px;font-size:10px}.bm-body{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a class="logo" href="/">BIBLIOTHECA</a>
+  <ul class="nav-links">
+    <li><a href="#home">Trang chủ</a></li>
+    <li><a href="#genres">Thể loại</a></li>
+    <li><a href="#contact">Liên hệ</a></li>
+  </ul>
+  <div class="nav-right">
+    <!-- Tìm kiếm -->
+    <div class="nav-search-wrap">
+      <button class="nav-icon" onclick="toggleSearch()" title="Tìm kiếm">⚲</button>
+      <div class="nav-search" id="nav-search">
+        <input type="text" id="search-input" placeholder="Tìm tên sách, tác giả..." oninput="doSearch(this.value)">
+        <div class="search-results" id="search-results"></div>
+      </div>
+    </div>
+    <!-- Tài khoản -->
+    <div id="nav-auth"></div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="dust" id="dust"></div>
+  <div class="hero-brand">
+    <div class="eyebrow">— THƯ VIỆN HOÀNG GIA —</div>
+    <h1>BIBLIOTHECA</h1>
+    <div class="hero-divider"></div>
+  </div>
+  <div class="slideshow" id="slideshow">
+    <div class="loading-grid">Đang tải sách nổi bật...</div>
+  </div>
+  <div class="slide-controls">
+    <button class="ctrl-btn" id="prevBtn">◀</button>
+    <div class="slide-counter"><strong id="curSlide">01</strong> / <span id="totSlide">01</span></div>
+    <button class="ctrl-btn" id="nextBtn">▶</button>
+  </div>
+</section>
+
+<!-- GENRES -->
+<section class="genres-section" id="genres">
+  <div class="section-header">
+    <h2 class="section-title">THƯ VIỆN THỂ LOẠI</h2>
+    <div class="orn"><div class="orn-line"></div><span class="orn-diamond">◆</span><div class="orn-line r"></div></div>
+    <p class="section-sub">Khám phá theo sở thích của bạn</p>
+  </div>
+  <div class="genre-tabs" id="genre-tabs">
+    <div class="loading-grid" style="width:100%;height:60px">Đang tải...</div>
+  </div>
+  <div id="genre-panels"></div>
+  <div class="view-more"><a href="#" class="btn-outline" onclick="event.preventDefault()">Xem toàn bộ kho sách</a></div>
+</section>
+
+<!-- FOOTER -->
+<footer id="contact">
+  <div class="footer-orn">✦ ◆ ✦</div>
+  <p class="footer-text">BIBLIOTHECA — Thư viện của tri thức và những điều kỳ diệu</p>
+  <div class="footer-links">
+    <a href="/admin/dashboard.html">Quản trị</a>
+    <a href="/login.html">Đăng nhập</a>
+    <a href="/profile.html">Trang cá nhân</a>
+  </div>
+  <p class="footer-text" style="margin-top:10px;font-size:12px">© MMXXVI · Anno Domini</p>
+</footer>
+
+<!-- MODAL CHI TIẾT SÁCH -->
+<div class="modal-back" id="book-modal" onclick="closeBookModal(event)">
+  <div class="book-modal" id="book-modal-inner"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-wrap"></div>
+
+<script src="/js/api.js"></script>
+<script>
+const COVERS = ['cov-classic','cov-horror','cov-drama','cov-academic','cov-fantasy','cov-mystery'];
+const EMBLEMS = ['✦','⚜','❦','⚛','✧','◆'];
+const GENRE_META = {
+  'Kinh dị':   {icon:'✦', cls:'cov-horror',   desc:'Từ kinh dị vũ trụ của Lovecraft đến nỗi sợ tâm lý hiện đại.'},
+  'Kịch tính': {icon:'⚜', cls:'cov-drama',    desc:'Bi kịch, xung đột nội tâm — nơi mỗi trang là một cuộc giằng xé.'},
+  'Học thuật': {icon:'⚛', cls:'cov-academic', desc:'Triết học, khoa học, kinh tế — dành cho độc giả muốn đào sâu.'},
+  'Kỳ ảo':     {icon:'❦', cls:'cov-fantasy',  desc:'Rồng, phép thuật và những anh hùng vô danh trong thế giới giả tưởng.'},
+  'Cổ điển':   {icon:'◆', cls:'cov-classic',  desc:'Di sản văn học nhân loại, vượt qua thử thách của thời gian.'},
+  'Trinh thám':{icon:'✧', cls:'cov-mystery',  desc:'Những vụ án bí ẩn và niềm vui suy luận từng manh mối nhỏ nhất.'},
+};
+
+// ── Dust particles ──
+const dustEl = document.getElementById('dust');
+for (let i=0;i<40;i++){const s=document.createElement('span');s.style.left=Math.random()*100+'%';s.style.animationDuration=(15+Math.random()*20)+'s';s.style.animationDelay=Math.random()*20+'s';s.style.opacity=.2+Math.random()*.5;dustEl.appendChild(s);}
+
+// ── Nav scroll ──
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>60));
+
+// ── Nav auth ──
+function renderNavAuth() {
+  const user = Auth.getUser();
+  const authEl = document.getElementById('nav-auth');
+  if (user) {
+    authEl.innerHTML = `
+      <a href="${Auth.isStaff()?'/admin/dashboard.html':'/profile.html'}" class="btn-user">
+        ${Auth.isStaff()?'QUẢN TRỊ':'CÁ NHÂN'}
+      </a>
+      <button class="btn-user" onclick="doLogout()">ĐĂNG XUẤT</button>`;
+  } else {
+    authEl.innerHTML = `<a href="/login.html" class="btn-user btn-login">ĐĂNG NHẬP</a>`;
+  }
+}
+
+function doLogout(){ Auth.clear(); renderNavAuth(); toast('Đã đăng xuất'); }
+
+// ── Toast ──
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toast-wrap').appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
+
+// ── Search ──
+let searchTimer;
+function toggleSearch() {
+  const s = document.getElementById('nav-search');
+  s.classList.toggle('open');
+  if (s.classList.contains('open')) setTimeout(()=>document.getElementById('search-input').focus(),50);
+}
+document.addEventListener('click', e=>{
+  if (!e.target.closest('.nav-search-wrap')) document.getElementById('nav-search').classList.remove('open');
+});
+
+function doSearch(val) {
+  clearTimeout(searchTimer);
+  if (!val.trim()) { document.getElementById('search-results').innerHTML=''; return; }
+  searchTimer = setTimeout(async ()=>{
+    try {
+      const results = await api.get('/books?keyword='+encodeURIComponent(val)+'&limit=6');
+      document.getElementById('search-results').innerHTML = results.length
+        ? results.map(b=>`
+          <div class="search-item" onclick="openBookModal(${b.id_sach})">
+            <div>
+              <div class="search-item-title">${b.tieu_de}</div>
+              <div class="search-item-sub">${b.tac_gia} · ${b.ten_the_loai} · ${b.so_luong_ton>0?'<span style="color:var(--green)">CÒN</span>':'<span style="color:var(--red)">HẾT</span>'}</div>
+            </div>
+          </div>`).join('')
+        : '<div style="padding:16px;text-align:center;font-family:Cormorant Garamond,serif;font-style:italic;color:var(--ink2)">Không tìm thấy</div>';
+    } catch(e){}
+  }, 300);
+}
+
+// ── Slideshow ──
+let slides=[], ci=0, siv;
+
+async function loadSlides() {
+  try {
+    const books = await api.get('/books?limit=6');
+    if (!books.length) { document.getElementById('slideshow').innerHTML='<div class="loading-grid">Chưa có sách nào trong kho</div>'; return; }
+    slides = books;
+    const romans=['I','II','III','IV','V','VI'];
+    const covers=['cover-1','cover-2','cover-3','cover-4','cover-5','cover-6'];
+
+    document.getElementById('slideshow').innerHTML = books.map((b,i)=>{
+      // LOGIC KIỂM TRA ẢNH BÌA
+      const htmlBiaSach = b.anh_bia 
+        ? `<img src="${b.anh_bia}" style="width:100%; height:100%; object-fit:cover; border-radius: 4px 8px 8px 4px; position: relative; z-index: 2;">`
+        : `<div class="book-content">
+            <div class="book-emblem">${EMBLEMS[i%6]}</div>
+            <div><div class="book-title">${b.tieu_de.substring(0,20).replace(/ /g,'<br>')}</div></div>
+            <div class="book-author-sm">${b.tac_gia}</div>
+           </div>`;
+
+      return `
+      <div class="slide ${i===0?'active':''}" data-i="${i}">
+        <div class="slide-text">
+          <div class="slabel">— SÁCH NỔI BẬT —</div>
+          <h2>${b.tieu_de}</h2>
+          <p class="author">— ${b.tac_gia}</p>
+          <div class="meta">
+            <span>${b.ten_the_loai||'VĂN HỌC'}</span>
+            <span>${b.nam_xuat_ban||'—'}</span>
+            <span>★ ${b.danh_gia||0}</span>
+          </div>
+          <p class="desc">Khám phá tác phẩm kinh điển của ${b.tac_gia}. Hiện có <strong style="color:${b.so_luong_ton>0?'var(--green)':'var(--red)'}">${b.so_luong_ton} bản</strong> trong thư viện.</p>
+          <a href="#" class="btn-primary" onclick="event.preventDefault();openBookModal(${b.id_sach})">${b.so_luong_ton>0?'Mượn sách':'Đặt trước'}</a>
+        </div>
+        <div class="slide-book">
+          <div class="book ${covers[i%6]}" onclick="openBookModal(${b.id_sach})">
+            ${htmlBiaSach}
+          </div>
+        </div>
+        <div class="slide-thumbs">
+          ${books.map((_,j)=>`<div class="thumb ${j===i?'active':''}" onclick="goTo(${j})">${romans[j]}</div>`).join('')}
+        </div>
+      </div>`
+    }).join('');
+
+    document.getElementById('totSlide').textContent = String(books.length).padStart(2,'0');
+    document.getElementById('prevBtn').onclick = ()=>goTo((ci-1+slides.length)%slides.length);
+    document.getElementById('nextBtn').onclick = ()=>goTo((ci+1)%slides.length);
+    startSlide();
+  } catch(e) {
+    document.getElementById('slideshow').innerHTML='<div class="loading-grid">Không thể kết nối server</div>';
+  }
+}
+function goTo(idx) {
+  document.querySelectorAll('.slide').forEach((s,i)=>{
+    s.classList.toggle('active',i===idx);
+    s.querySelectorAll('.thumb').forEach((t,ti)=>t.classList.toggle('active',ti===idx));
+  });
+  document.getElementById('curSlide').textContent = String(idx+1).padStart(2,'0');
+  ci=idx; clearInterval(siv); startSlide();
+}
+function startSlide(){ siv=setInterval(()=>goTo((ci+1)%slides.length),10000); }
+
+// ── Genres ──
+// ── Genres ──
+async function loadGenres() {
+  try {
+    const [genres, allBooks] = await Promise.all([
+      api.get('/catalog/the-loai'),
+      api.get('/books?limit=200'),
+    ]);
+
+    // Tab buttons
+    document.getElementById('genre-tabs').innerHTML = genres.map((g,i)=>{
+      const meta = GENRE_META[g.ten_the_loai] || {icon:'◆'};
+      return `<button class="genre-tab ${i===0?'active':''}" onclick="switchGenre('${g.ten_the_loai}',this)">
+        <span class="icon">${meta.icon}</span>${g.ten_the_loai}
+      </button>`;
+    }).join('');
+
+    // Panels
+    document.getElementById('genre-panels').innerHTML = genres.map((g,i)=>{
+      const meta = GENRE_META[g.ten_the_loai] || {icon:'◆', cls:'cov-default', desc:''};
+      const gBooks = allBooks.filter(b=>b.ten_the_loai===g.ten_the_loai).slice(0,5);
+      
+      const cards = gBooks.length ? gBooks.map(b=>{
+        // LOGIC KIỂM TRA ẢNH BÌA
+        const htmlBiaSach = b.anh_bia
+          ? `<img src="${b.anh_bia}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:2;">`
+          : `<div class="bcc">
+              <div class="bce">${meta.icon}</div>
+              <div class="bct">${b.tieu_de.substring(0,16).toUpperCase()}</div>
+             </div>`;
+
+        return `
+        <div class="book-card" onclick="openBookModal(${b.id_sach})">
+          <div class="bcover ${meta.cls}">
+            ${htmlBiaSach}
+          </div>
+          <div class="binfo">
+            <div class="bi-title">${b.tieu_de}</div>
+            <div class="bi-author">${b.tac_gia}</div>
+            <div class="bi-foot">
+              <div class="bs ${b.so_luong_ton>0?'a':'b'}">● ${b.so_luong_ton>0?'CÒN':'HẾT'}</div>
+              <div class="br">★ ${b.danh_gia||0}</div>
+            </div>
+          </div>
+        </div>`
+      }).join('')
+      : '<div class="loading-grid">Chưa có sách thể loại này</div>';
+
+      return `<div class="genre-panel ${i===0?'active':''}" data-genre="${g.ten_the_loai}">
+        <div class="panel-header">
+          <div class="panel-info">
+            <h3>${g.ten_the_loai}</h3>
+            <p>${meta.desc||g.mo_ta||''}</p>
+          </div>
+          <div class="panel-count"><strong>${allBooks.filter(b=>b.ten_the_loai===g.ten_the_loai).length}</strong>ĐẦU SÁCH</div>
+        </div>
+        <div class="book-grid">${cards}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('genre-tabs').innerHTML = '<div class="loading-grid">Không thể kết nối server</div>';
+  }
+}
+
+function switchGenre(name, btn) {
+  document.querySelectorAll('.genre-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.genre-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelector(`.genre-panel[data-genre="${name}"]`)?.classList.add('active');
+}
+
+
+// ── Modal chi tiết sách ──
+function openBookModal(id) {
+  window.location.href = `/book-detail.html?id=${id}`;
+}
+function closeBookModal(e) {
+  if (e && e.target !== document.getElementById('book-modal')) return;
+  document.getElementById('book-modal').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeBookModal(); });
+
+// ── Mượn sách ──
+async function borrowBook(id, title) {
+  const user = Auth.getUser();
+  if (!user) { window.location='/login.html'; return; }
+
+  // Cần id_nhan_vien — lấy nhân viên đầu tiên
+  try {
+    const staff = await api.get('/staff');
+    if (!staff.length) { toast('Không có nhân viên nào trong hệ thống','err'); return; }
+
+    // Lấy thông tin độc giả
+    const readers = await api.get('/readers');
+    const me = readers.find(r=>r.id_tai_khoan==user.id);
+    if (!me) { toast('Không tìm thấy thông tin độc giả','err'); return; }
+
+    const due = new Date(Date.now()+14*864e5).toISOString().split('T')[0];
+    await api.post('/borrows',{
+      id_doc_gia: me.id_doc_gia,
+      id_nhan_vien: staff[0].id_nhan_vien,
+      sach_ids: [id],
+      hen_tra: due,
+    });
+    toast(`Mượn "${title}" thành công! Hạn trả: ${new Date(due).toLocaleDateString('vi-VN')}`,'ok');
+    closeBookModal();
+    loadSlides();
+    loadGenres();
+  } catch(e) { toast(e.message,'err'); }
+}
+
+async function reserveBook(id) {
+  const user = Auth.getUser();
+  if (!user) { window.location='/login.html'; return; }
+  try {
+    const readers = await api.get('/readers');
+    const me = readers.find(r=>r.id_tai_khoan==user.id);
+    if (!me) { toast('Không tìm thấy thông tin độc giả','err'); return; }
+    await api.post('/borrows/dat-truoc',{ id_doc_gia: me.id_doc_gia, id_sach: id });
+    toast('Đã đặt trước thành công! Chúng tôi sẽ thông báo khi có sách.','ok');
+    closeBookModal();
+  } catch(e) { toast(e.message,'err'); }
+}
+
+// ── Smooth scroll ──
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    const t=document.querySelector(a.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth'});}
+  });
+});
+
+// ── Khởi động ──
+renderNavAuth();
+loadSlides();
+loadGenres();
+</script>
+</body>
+</html>

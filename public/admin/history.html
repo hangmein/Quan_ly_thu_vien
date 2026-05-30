@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lịch sử lập phiếu — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+.two-col{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;align-items:start}
+.tag-loai{padding:2px 10px;border-radius:20px;font-size:10px;font-family:'Cinzel',serif;letter-spacing:1px}
+.tag-muon{background:rgba(201,169,110,.15);color:#c9a96e;border:1px solid rgba(201,169,110,.3)}
+.tag-tra{background:rgba(143,201,114,.12);color:#8fc972;border:1px solid rgba(143,201,114,.25)}
+</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+<script>
+async function init(){
+  const c=document.getElementById('content');
+  const today=new Date().toISOString().split('T')[0];
+  const ago30=new Date(Date.now()-30*864e5).toISOString().split('T')[0];
+
+  c.innerHTML=`
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">BỘ LỌC</span>
+      </div>
+      <div class="search-row">
+        <select class="inp" id="f-nv" style="min-width:200px"><option value="">Tất cả nhân viên</option></select>
+        <select class="inp" id="f-loai"><option value="">Mượn + Trả</option><option value="muon">Chỉ phiếu mượn</option><option value="tra">Chỉ phiếu trả</option></select>
+        <label style="font-size:12px;color:var(--ink2);font-family:'Cinzel',serif;letter-spacing:1px">TỪ</label>
+        <input class="inp" type="date" id="f-tu" value="${ago30}">
+        <label style="font-size:12px;color:var(--ink2);font-family:'Cinzel',serif;letter-spacing:1px">ĐẾN</label>
+        <input class="inp" type="date" id="f-den" value="${today}">
+        <button class="tb-btn primary" onclick="loadHistory()">Lọc</button>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-head"><span class="card-title">NHẬT KÝ LẬP PHIẾU</span><span id="count-label" style="font-size:11px;color:var(--ink2);font-family:'Cinzel',serif"></span></div>
+        <div id="history-tbl"><div class="empty">Đang tải...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">THỐNG KÊ THEO NHÂN VIÊN</span></div>
+        <div id="staff-stats"><div class="empty">Đang tải...</div></div>
+      </div>
+    </div>`;
+
+  // Nạp danh sách nhân viên vào filter
+  try{
+    const staff=await api.get('/staff');
+    const sel=document.getElementById('f-nv');
+    staff.forEach(s=>{const o=document.createElement('option');o.value=s.id_nhan_vien;o.textContent=s.ho_ten+' ('+s.chuc_vu+')';sel.appendChild(o);});
+  }catch(e){}
+
+  loadHistory();
+  loadStaffStats();
+}
+
+async function loadHistory(){
+  const tbl=document.getElementById('history-tbl');
+  tbl.innerHTML='<div class="empty">Đang tải...</div>';
+  const p=new URLSearchParams();
+  const nv=document.getElementById('f-nv').value;
+  const loai=document.getElementById('f-loai').value;
+  const tu=document.getElementById('f-tu').value;
+  const den=document.getElementById('f-den').value;
+  if(nv)p.set('id_nhan_vien',nv);
+  if(loai)p.set('loai',loai);
+  if(tu)p.set('tu_ngay',tu);
+  if(den)p.set('den_ngay',den);
+
+  try{
+    const data=await api.get('/history?'+p);
+    document.getElementById('count-label').textContent=data.length+' phiếu';
+    tbl.innerHTML=data.length?`
+      <table>
+        <thead><tr><th>NGÀY</th><th>LOẠI</th><th>MÃ</th><th>NHÂN VIÊN</th><th>ĐỘC GIẢ</th><th>CHI TIẾT</th></tr></thead>
+        <tbody>${data.map(h=>`
+          <tr>
+            <td style="white-space:nowrap;color:var(--ink2)">${fmtDate(h.ngay)}</td>
+            <td><span class="tag-loai ${h.loai_phieu==='Mượn'?'tag-muon':'tag-tra'}">${h.loai_phieu==='Mượn'?'MƯỢN':'TRẢ'}</span></td>
+            <td style="color:var(--gold)">#${h.ma_phieu}</td>
+            <td><strong>${h.nhan_vien}</strong><div style="font-size:11px;color:var(--ink2)">${h.chuc_vu||''}</div></td>
+            <td>${h.doc_gia}</td>
+            <td style="max-width:200px;color:var(--ink2);font-size:12px">${h.chi_tiet}</td>
+          </tr>`).join('')}</tbody>
+      </table>`:'<div class="empty">Không có phiếu nào trong khoảng thời gian này</div>';
+  }catch(e){tbl.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+
+async function loadStaffStats(){
+  const el=document.getElementById('staff-stats');
+  const tu=document.getElementById('f-tu')?.value;
+  const den=document.getElementById('f-den')?.value;
+  const p=new URLSearchParams();
+  if(tu)p.set('tu_ngay',tu);
+  if(den)p.set('den_ngay',den);
+  try{
+    const data=await api.get('/history/thong-ke-nhan-vien?'+p);
+    const maxTotal=Math.max(...data.map(d=>d.so_phieu_muon+d.so_phieu_tra),1);
+    el.innerHTML=data.length?data.map(s=>{
+      const total=s.so_phieu_muon+s.so_phieu_tra;
+      return `<div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:13px"><strong>${s.ho_ten}</strong> <span style="color:var(--ink2);font-size:11px">${s.chuc_vu||''}</span></span>
+          <span style="color:var(--gold);font-size:13px">${total} phiếu</span>
+        </div>
+        <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--bg2)">
+          <div style="width:${s.so_phieu_muon/maxTotal*100}%;background:#c9a96e" title="Mượn: ${s.so_phieu_muon}"></div>
+          <div style="width:${s.so_phieu_tra/maxTotal*100}%;background:#8fc972" title="Trả: ${s.so_phieu_tra}"></div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:4px;font-size:11px;color:var(--ink2)">
+          <span><span style="color:#c9a96e">●</span> Mượn: ${s.so_phieu_muon}</span>
+          <span><span style="color:#8fc972">●</span> Trả: ${s.so_phieu_tra}</span>
+        </div>
+      </div>`;
+    }).join(''):'<div class="empty">Chưa có dữ liệu</div>';
+  }catch(e){el.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Xử lý phạt & Báo mất — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e;--red:#c97272}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+.tabs2{display:flex;gap:0;border-bottom:1px solid rgba(201,169,110,.18);margin-bottom:20px}
+.tab2{padding:12px 26px;background:transparent;border:none;color:var(--ink2);font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;cursor:pointer;border-bottom:2px solid transparent;transition:all .3s}
+.tab2:hover{color:var(--ink)}
+.tab2.active{color:var(--gold);border-bottom-color:var(--gold)}
+.pane{display:none}.pane.active{display:block}
+</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+
+<!-- Modal báo mất sách -->
+<div class="modal-back" id="lost-modal">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-ttl">BÁO MẤT SÁCH</span><button class="modal-x" onclick="closeModal('lost-modal')">✕</button></div>
+    <div class="modal-bd">
+      <div class="fg"><label>CHỌN ĐỘC GIẢ *</label><select class="inp" id="l-reader" style="width:100%"><option value="">-- Chọn độc giả --</option></select></div>
+      <div class="fg"><label>CHỌN SÁCH BỊ MẤT *</label><select class="inp" id="l-book" style="width:100%"><option value="">-- Chọn sách --</option></select></div>
+      <div class="fg"><label>TIỀN ĐỀN BÙ (₫)</label><input class="inp" type="number" id="l-money" placeholder="VD: 150000" style="width:100%"></div>
+      <div style="background:rgba(201,114,114,.08);border:1px solid rgba(201,114,114,.2);padding:12px;font-size:13px;color:var(--ink2);font-family:'Cormorant Garamond',serif;font-style:italic">
+        Khi xác nhận: hệ thống sẽ ghi nhận sách mất, giảm số lượng tồn trong kho và tự động lập phiếu phạt đền bù cho độc giả.
+      </div>
+    </div>
+    <div class="modal-ft"><button class="modal-btn" onclick="closeModal('lost-modal')">Hủy</button><button class="modal-btn save" id="lsave-btn" onclick="saveLost()">Xác nhận báo mất</button></div>
+  </div>
+</div>
+
+<script>
+let TAB='fines';
+async function init(){
+  const c=document.getElementById('content');
+  c.innerHTML=`
+    <div class="tabs2">
+      <button class="tab2 active" id="tab-fines" onclick="switchTab('fines')">PHIẾU PHẠT</button>
+      <button class="tab2" id="tab-lost" onclick="switchTab('lost')">SÁCH BỊ MẤT</button>
+    </div>
+    <div class="pane active" id="pane-fines">
+      <div class="card">
+        <div class="card-head"><span class="card-title">DANH SÁCH PHIẾU PHẠT</span>
+          <select class="inp" id="sf" onchange="loadFines()"><option value="">Tất cả</option><option value="unpaid">Chưa thanh toán</option><option value="paid">Đã thanh toán</option></select>
+        </div>
+        <div id="fines-tbl"><div class="empty">Đang tải...</div></div>
+      </div>
+    </div>
+    <div class="pane" id="pane-lost">
+      <div class="card">
+        <div class="card-head"><span class="card-title">SÁCH BỊ BÁO MẤT</span>
+          <button class="tb-btn primary" onclick="openLost()">+ Báo mất sách</button>
+        </div>
+        <div id="lost-tbl"><div class="empty">Đang tải...</div></div>
+      </div>
+    </div>`;
+  loadFines();
+}
+
+function switchTab(t){
+  TAB=t;
+  document.getElementById('tab-fines').classList.toggle('active',t==='fines');
+  document.getElementById('tab-lost').classList.toggle('active',t==='lost');
+  document.getElementById('pane-fines').classList.toggle('active',t==='fines');
+  document.getElementById('pane-lost').classList.toggle('active',t==='lost');
+  if(t==='lost') loadLost();
+}
+
+async function loadFines(){
+  const tt=document.getElementById('sf')?.value||'';
+  const el=document.getElementById('fines-tbl');
+  el.innerHTML='<div class="empty">Đang tải...</div>';
+  try{
+    const p=new URLSearchParams();if(tt)p.set('trang_thai',tt);
+    const data=await api.get('/fines?'+p);
+    el.innerHTML=data.length?`<table><thead><tr><th>MÃ</th><th>ĐỘC GIẢ</th><th>LÝ DO</th><th>SỐ TIỀN</th><th>NGÀY LẬP</th><th>TT</th><th></th></tr></thead><tbody>${data.map(f=>`<tr><td style="color:var(--gold)">#${f.id_phat}</td><td>${f.doc_gia}<div style="font-size:11px;color:var(--ink2)">${f.sdt||''}</div></td><td>${f.ly_do}</td><td style="color:${f.trang_thai_thanh_toan==='unpaid'?'#c97272':'#8fc972'}">${fmtMoney(f.so_tien)}</td><td style="color:var(--ink2)">${fmtDate(f.ngay_lap)}</td><td>${statusBadge(f.trang_thai_thanh_toan)}</td><td>${f.trang_thai_thanh_toan==='unpaid'?`<button class="btn-tbl primary" onclick="thu(${f.id_phat},${f.so_tien})">Thu tiền</button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Không có phiếu phạt nào</div>';
+  }catch(e){el.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+
+async function loadLost(){
+  const el=document.getElementById('lost-tbl');
+  el.innerHTML='<div class="empty">Đang tải...</div>';
+  try{
+    const data=await api.get('/fines/bao-mat');
+    el.innerHTML=data.length?`<table><thead><tr><th>MÃ</th><th>SÁCH</th><th>ĐỘC GIẢ</th><th>TIỀN ĐỀN BÙ</th><th>NGÀY BÁO</th><th>TRẠNG THÁI</th></tr></thead><tbody>${data.map(b=>`<tr><td style="color:var(--gold)">#${b.id_bao_mat}</td><td><strong>${b.sach}</strong></td><td>${b.doc_gia}<div style="font-size:11px;color:var(--ink2)">${b.sdt||''}</div></td><td style="color:var(--red)">${fmtMoney(b.tien_den_bu)}</td><td style="color:var(--ink2)">${fmtDate(b.ngay_bao)}</td><td><span style="padding:2px 9px;border-radius:20px;font-size:10px;font-family:'Cinzel',serif;background:rgba(201,114,114,.15);color:var(--red)">${b.trang_thai==='processing'?'ĐANG XỬ LÝ':b.trang_thai}</span></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Chưa có sách nào bị báo mất</div>';
+  }catch(e){el.innerHTML=`<div class="empty">${e.message}</div>`;}
+}
+
+async function thu(id,tien){if(!await confirm2(`Thu ${fmtMoney(tien)}?`))return;try{await api.patch('/fines/'+id+'/thu',{});toast('Thu tiền thành công','ok');loadFines();}catch(e){toast(e.message,'err');}}
+
+async function openLost(){
+  // Nạp độc giả + sách vào dropdown
+  try{
+    const [readers,books]=await Promise.all([api.get('/readers'),api.get('/books?limit=200')]);
+    const rs=document.getElementById('l-reader');
+    rs.innerHTML='<option value="">-- Chọn độc giả --</option>'+readers.map(r=>`<option value="${r.id_doc_gia}">${r.ho_ten}</option>`).join('');
+    const bs=document.getElementById('l-book');
+    bs.innerHTML='<option value="">-- Chọn sách --</option>'+books.map(b=>`<option value="${b.id_sach}">${b.tieu_de}</option>`).join('');
+  }catch(e){toast(e.message,'err');}
+  openModal('lost-modal');
+}
+
+async function saveLost(){
+  const dg=document.getElementById('l-reader').value;
+  const sid=document.getElementById('l-book').value;
+  const tien=document.getElementById('l-money').value;
+  if(!dg||!sid){toast('Vui lòng chọn độc giả và sách','err');return;}
+  setLoading('#lsave-btn',true);
+  try{
+    await api.post('/fines/bao-mat',{id_doc_gia:parseInt(dg),id_sach:parseInt(sid),tien_den_bu:parseInt(tien)||0});
+    toast('Đã ghi nhận báo mất sách','ok');
+    closeModal('lost-modal');
+    document.getElementById('l-money').value='';
+    loadLost();
+  }catch(e){toast(e.message,'err');}
+  finally{setLoading('#lsave-btn',false);}
+}
+
+init();
+</script>
+</body>
+</html>

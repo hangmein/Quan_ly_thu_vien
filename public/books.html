@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIBLIOTHECA — Quản lý Sách</title>
+<style>
+  :root {
+    --bg-deep: #0a0806; --bg-card: #14100c; --bg-elevated: #1c1612;
+    --ink: #e8dcc4; --ink-muted: #8a7a60; --gold: #c9a96e; --gold-bright: #e6c989;
+    --border: rgba(201,169,110,0.18); --danger: #c97272; --ok: #8fc972;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg-deep); color:var(--ink); font-family:system-ui,sans-serif; padding:30px; }
+  h1 { font-family:Georgia,serif; letter-spacing:4px; color:var(--gold-bright); margin-bottom:6px; }
+  .sub { color:var(--ink-muted); margin-bottom:24px; font-style:italic; }
+  .bar { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+  input, select, button { padding:10px 14px; background:var(--bg-elevated); border:1px solid var(--border);
+    color:var(--ink); border-radius:4px; font-size:14px; }
+  button { cursor:pointer; transition:.2s; }
+  button:hover { border-color:var(--gold); color:var(--gold); }
+  .btn-gold { background:var(--gold); color:var(--bg-deep); border:none; font-weight:600; }
+  .btn-gold:hover { background:var(--gold-bright); color:var(--bg-deep); }
+  table { width:100%; border-collapse:collapse; background:var(--bg-card); border-radius:6px; overflow:hidden; }
+  th { background:rgba(201,169,110,0.12); color:var(--gold); padding:12px; text-align:left; font-size:12px;
+    letter-spacing:1px; text-transform:uppercase; }
+  td { padding:12px; border-top:1px solid var(--border); font-size:14px; }
+  tr:hover td { background:rgba(201,169,110,0.04); }
+  .tag { padding:3px 10px; border-radius:20px; font-size:11px; }
+  .tag.ok { background:rgba(143,201,114,0.15); color:var(--ok); }
+  .tag.no { background:rgba(201,114,114,0.15); color:var(--danger); }
+  .act { color:var(--ink-muted); cursor:pointer; margin-right:12px; font-size:13px; }
+  .act:hover { color:var(--gold); }
+  .act.del:hover { color:var(--danger); }
+  #msg { padding:12px; border-radius:4px; margin-bottom:16px; display:none; }
+  #msg.show { display:block; }
+  #msg.err { background:rgba(201,114,114,0.12); color:var(--danger); }
+  #msg.ok { background:rgba(143,201,114,0.12); color:var(--ok); }
+</style>
+</head>
+<body>
+  <h1>BIBLIOTHECA</h1>
+  <p class="sub">Quản lý kho sách — demo kết nối API</p>
+
+  <div id="msg"></div>
+
+  <div class="bar">
+    <input id="search" placeholder="Tìm theo tên sách..." style="flex:1; min-width:200px;">
+    <select id="genre">
+      <option value="">— Tất cả thể loại —</option>
+      <option value="1">Kinh dị</option>
+      <option value="2">Kịch tính</option>
+      <option value="3">Học thuật</option>
+      <option value="4">Kỳ ảo</option>
+      <option value="5">Cổ điển</option>
+      <option value="6">Trinh thám</option>
+    </select>
+    <button onclick="loadBooks()">Tìm</button>
+    <button class="btn-gold" onclick="addDemo()">+ Thêm sách demo</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Tiêu đề</th><th>Tác giả</th><th>Thể loại</th><th>Năm</th><th>Tồn / Tổng</th><th>Đánh giá</th><th>Trạng thái</th><th></th></tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="9" style="text-align:center; color:var(--ink-muted);">Đang tải...</td></tr>
+    </tbody>
+  </table>
+
+<script>
+const API = 'http://localhost:3000/api';
+// Token lưu sau khi đăng nhập (demo: bạn cần đăng nhập trước để có token cho thêm/sửa/xóa)
+let token = localStorage.getItem('token') || '';
+
+function showMsg(text, type) {
+  const m = document.getElementById('msg');
+  m.textContent = text;
+  m.className = 'show ' + type;
+  setTimeout(() => m.className = '', 3000);
+}
+
+async function loadBooks() {
+  const kw = document.getElementById('search').value;
+  const g = document.getElementById('genre').value;
+  let url = API + '/books?';
+  if (kw) url += 'keyword=' + encodeURIComponent(kw) + '&';
+  if (g) url += 'the_loai=' + g;
+
+  try {
+    const res = await fetch(url);
+    const books = await res.json();
+    const tbody = document.getElementById('tbody');
+    if (books.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--ink-muted);">Không có sách nào</td></tr>';
+      return;
+    }
+    tbody.innerHTML = books.map(b => `
+      <tr>
+        <td>${b.id_sach}</td>
+        <td>${b.tieu_de}</td>
+        <td>${b.tac_gia}</td>
+        <td>${b.ten_the_loai}</td>
+        <td>${b.nam_xuat_ban || '-'}</td>
+        <td>${b.so_luong_ton} / ${b.so_luong_tong}</td>
+        <td>★ ${b.danh_gia}</td>
+        <td><span class="tag ${b.so_luong_ton > 0 ? 'ok' : 'no'}">${b.so_luong_ton > 0 ? 'CÒN' : 'HẾT'}</span></td>
+        <td><span class="act del" onclick="delBook(${b.id_sach})">Xóa</span></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    showMsg('Không kết nối được API. Server đã chạy chưa?', 'err');
+  }
+}
+
+async function addDemo() {
+  if (!token) { showMsg('Cần đăng nhập trước để thêm sách (xem README)', 'err'); return; }
+  try {
+    const res = await fetch(API + '/books', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        isbn: '978-demo-' + Date.now(),
+        tieu_de: 'Sách Demo ' + new Date().toLocaleTimeString('vi'),
+        id_the_loai: 1, id_tac_gia: 1, nam_xuat_ban: 2024, so_luong_tong: 3
+      })
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg(data.message, 'ok'); loadBooks(); }
+    else showMsg(data.message, 'err');
+  } catch (err) { showMsg('Lỗi: ' + err.message, 'err'); }
+}
+
+async function delBook(id) {
+  if (!token) { showMsg('Cần đăng nhập với quyền admin để xóa', 'err'); return; }
+  if (!confirm('Xóa sách ID ' + id + '?')) return;
+  try {
+    const res = await fetch(API + '/books/' + id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg(data.message, 'ok'); loadBooks(); }
+    else showMsg(data.message, 'err');
+  } catch (err) { showMsg('Lỗi: ' + err.message, 'err'); }
+}
+
+loadBooks();
+</script>
+</body>
+</html>

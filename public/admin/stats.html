@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thống kê — BIBLIOTHECA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}
+.prog{height:6px;background:#1c1612;border-radius:3px;margin-top:4px;overflow:hidden}
+.prog-bar{height:100%;background:var(--gold);border-radius:3px;transition:width .8s ease}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+</style>
+</head>
+<body>
+<script src="/js/api.js"></script>
+<script src="/admin/_layout.js"></script>
+<script>
+async function init(){
+  const c=document.getElementById('content');
+  c.innerHTML=`
+    <div class="stat-grid" id="sg"></div>
+    <div class="two-col">
+      <div class="card"><div class="card-head"><span class="card-title">TOP 10 SÁCH MƯỢN NHIỀU</span></div><div id="top-books"><div class="empty">Đang tải...</div></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">THEO THỂ LOẠI</span></div><div id="by-genre"><div class="empty">Đang tải...</div></div></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><div class="card-head"><span class="card-title">TỒN KHO THEO THỂ LOẠI</span></div><div id="stock"><div class="empty">Đang tải...</div></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">ĐỘC GIẢ TÍCH CỰC</span></div><div id="active-readers"><div class="empty">Đang tải...</div></div></div>
+    </div>`;
+
+  try{
+    const s=await api.get('/stats/tong-quan');
+    document.getElementById('sg').innerHTML=[
+      {l:'TỔNG SÁCH',v:s.tong_sach?.toLocaleString(),n:`${s.ton_kho} bản còn`},
+      {l:'ĐỘC GIẢ',v:s.doc_gia_active?.toLocaleString(),n:'đang hoạt động'},
+      {l:'ĐANG MƯỢN',v:s.dang_muon,n:`${s.qua_han} quá hạn`,cls:'dn'},
+      {l:'TIỀN PHẠT CHƯA THU',v:fmtMoney(s.tien_phat_chua_thu),n:'tháng này',cls:'dn'},
+    ].map(x=>`<div class="stat-card"><div class="stat-label">${x.l}</div><div class="stat-val">${x.v}</div><div class="stat-note ${x.cls||''}">${x.n}</div></div>`).join('');
+  }catch(e){}
+
+  try{
+    const top=await api.get('/stats/sach-muon-nhieu?top=10');
+    const max=Math.max(...top.map(b=>b.luot_muon),1);
+    document.getElementById('top-books').innerHTML=top.map((b,i)=>`
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:13px">
+          <span><span style="color:var(--gold);margin-right:8px">${i+1}</span>${b.tieu_de}</span>
+          <span style="color:var(--gold)">${b.luot_muon}</span>
+        </div>
+        <div class="prog"><div class="prog-bar" style="width:${(b.luot_muon/max*100).toFixed(0)}%"></div></div>
+      </div>`).join('');
+  }catch(e){}
+
+  try{
+    const genres=await api.get('/stats/theo-the-loai');
+    const max=Math.max(...genres.map(g=>g.luot_muon),1);
+    document.getElementById('by-genre').innerHTML=`<table><thead><tr><th>THỂ LOẠI</th><th>LƯỢT MƯỢN</th><th>TỈ LỆ</th></tr></thead><tbody>${genres.map(g=>`<tr><td>${g.ten_the_loai}</td><td style="color:var(--gold)">${g.luot_muon}</td><td style="width:120px"><div class="prog"><div class="prog-bar" style="width:${(g.luot_muon/max*100).toFixed(0)}%"></div></div></td></tr>`).join('')}</tbody></table>`;
+  }catch(e){}
+
+  try{
+    const stock=await api.get('/stats/ton-kho');
+    document.getElementById('stock').innerHTML=`<table><thead><tr><th>THỂ LOẠI</th><th>ĐẦU SÁCH</th><th>CÒN</th></tr></thead><tbody>${stock.map(s=>`<tr><td>${s.ten_the_loai}</td><td style="color:var(--ink2)">${s.so_dau_sach}</td><td style="color:${s.ban_con/s.tong_ban<0.2?'#c97272':'#8fc972'}">${s.ban_con}/${s.tong_ban}</td></tr>`).join('')}</tbody></table>`;
+  }catch(e){}
+
+  try{
+    const readers=await api.get('/stats/doc-gia-tich-cuc?top=8');
+    document.getElementById('active-readers').innerHTML=`<table><thead><tr><th>#</th><th>HỌ TÊN</th><th>GÓI THẺ</th><th>LƯỢT MƯỢN</th></tr></thead><tbody>${readers.map((r,i)=>`<tr><td style="color:var(--gold)">${i+1}</td><td>${r.ho_ten}</td><td style="color:var(--ink2)">${r.ten_goi}</td><td style="color:var(--gold)">${r.tong_luot_muon}</td></tr>`).join('')}</tbody></table>`;
+  }catch(e){}
+}
+init();
+</script>
+</body>
+</html>
