@@ -61,6 +61,23 @@ async function createBook(req, res) {
     return res.status(400).json({ message: 'Thiếu tiêu đề, thể loại hoặc tác giả' });
   try {
     const pool = await getPool();
+    // --- 1. KIỂM TRA TRÙNG ISBN ---
+    if (isbn) {
+        const checkIsbn = await pool.request()
+            .input('isbn', sql.NVarChar, isbn)
+            .query('SELECT TOP 1 id_sach FROM sach WHERE isbn = @isbn');
+        if (checkIsbn.recordset.length > 0) {
+            return res.status(409).json({ message: 'Lỗi: Mã ISBN này đã tồn tại trong thư viện!' });
+        }
+    }
+
+    // --- 2. KIỂM TRA TRÙNG TIÊU ĐỀ SÁCH ---
+    const checkTitle = await pool.request()
+        .input('tieu_de', sql.NVarChar, tieu_de)
+        .query('SELECT TOP 1 id_sach FROM sach WHERE tieu_de = @tieu_de');
+    if (checkTitle.recordset.length > 0) {
+        return res.status(409).json({ message: 'Lỗi: Tên sách này đã tồn tại!' });
+    }
     const qty  = parseInt(so_luong_tong) || 1;
     const r = await pool.request()
       .input('isbn',        sql.NVarChar, isbn || null)
