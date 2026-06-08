@@ -117,7 +117,7 @@ async function toggleCard(req, res) {
         .input('id', sql.Int, req.params.id)
         .query(`SELECT COUNT(*) AS cnt FROM phieu_muon WHERE id_doc_gia=@id AND trang_thai IN ('borrowing','overdue')`);
       if (chk.recordset[0].cnt > 0)
-        return res.status(400).json({ message: 'Không thể khóa: độc giả đang có sách chưa trả' });
+        return res.status(400).json({ message: 'Không thể khóa! Độc giả đang có sách chưa trả' });
     }
     await pool.request()
       .input('id', sql.Int,      req.params.id)
@@ -132,7 +132,6 @@ async function deleteReader(req, res) {
   const id = req.params.id;
   try {
     const pool = await getPool();
-    // Kiểm tra còn phiếu mượn chưa trả không
     const chk = await pool.request()
       .input('id', sql.Int, id)
       .query(`SELECT COUNT(*) AS cnt FROM phieu_muon
@@ -140,7 +139,6 @@ async function deleteReader(req, res) {
     if (chk.recordset[0].cnt > 0)
       return res.status(400).json({ message: 'Không thể xóa: độc giả đang có sách chưa trả' });
 
-    // Kiểm tra còn phạt chưa thanh toán
     const chk2 = await pool.request()
       .input('id', sql.Int, id)
       .query(`SELECT COUNT(*) AS cnt FROM phat
@@ -148,21 +146,20 @@ async function deleteReader(req, res) {
     if (chk2.recordset[0].cnt > 0)
       return res.status(400).json({ message: 'Không thể xóa: độc giả còn phạt chưa thanh toán' });
 
-    // Lấy id tài khoản để xóa kèm
     const rd = await pool.request()
       .input('id', sql.Int, id)
       .query('SELECT id_tai_khoan FROM doc_gia WHERE id_doc_gia=@id');
     if (!rd.recordset.length) return res.status(404).json({ message: 'Không tìm thấy độc giả' });
     const idTK = rd.recordset[0].id_tai_khoan;
 
-    // Xóa độc giả
     await pool.request().input('id', sql.Int, id)
       .query('DELETE FROM doc_gia WHERE id_doc_gia=@id');
-    // Xóa tài khoản gắn kèm (nếu có)
+
     if (idTK) {
       await pool.request().input('tk', sql.Int, idTK)
         .query('DELETE FROM tai_khoan WHERE id_tai_khoan=@tk');
     }
+      
     res.json({ message: 'Đã xóa độc giả' });
   } catch (err) {
     res.status(500).json({ message: 'Không thể xóa (còn dữ liệu liên quan): ' + err.message });

@@ -15,7 +15,6 @@
     fines:     'XỬ LÝ PHẠT',
     catalog:   'DANH MỤC',
     stats:     'THỐNG KÊ BÁO CÁO',
-    history:   'LỊCH SỬ LẬP PHIẾU',
     duesoon:   'NHẮC SÁCH ĐẾN HẠN',
     violators: 'ĐỘC GIẢ VI PHẠM',
   };
@@ -26,12 +25,7 @@
     { id:'readers',   icon:'◉', label:'Quản lý độc giả',  section:'' },
     { id:'staff',     icon:'◎', label:'Quản lý nhân viên',section:'', adminOnly:true },
     { id:'borrow',    icon:'⚜', label:'Mượn / Trả sách', section:'NGHIỆP VỤ' },
-    { id:'duesoon',   icon:'⏰', label:'Nhắc đến hạn',     section:'' },
     { id:'fines',     icon:'❋', label:'Xử lý phạt',       section:'' },
-    { id:'history',   icon:'⌬', label:'Lịch sử lập phiếu',section:'' },
-    { id:'violators', icon:'⚠', label:'Độc giả vi phạm',  section:'' },
-    { id:'catalog',   icon:'❦', label:'Danh mục',         section:'HỆ THỐNG', adminOnly:true },
-    { id:'stats',     icon:'⚛', label:'Thống kê',         section:'' },
   ];
 
   const navHTML = navItems

@@ -118,7 +118,7 @@ async function deleteBook(req, res) {
     if (!r.rowsAffected[0]) return res.status(404).json({ message: 'Không tìm thấy sách' });
     res.json({ message: 'Đã xóa sách' });
   } catch (err) {
-    res.status(500).json({ message: 'Không thể xóa (sách đang được mượn hoặc có ràng buộc)', error: err.message });
+    res.status(500).json({ message: 'Không thể xóa! Sách đang được mượn hoặc có ràng buộc', error: err.message });
   }
 }
 

@@ -64,7 +64,7 @@ async function createBorrow(req, res) {
               WHERE pm.id_doc_gia=@dg2 AND pm.trang_thai IN ('borrowing','overdue')`);
     const tongSauMuon = dangMuon.recordset[0].cnt + sach_ids.length;
     if (tongSauMuon > so_sach_toi_da)
-      throw new Error(`Vượt giới hạn gói thẻ (tối đa ${so_sach_toi_da} cuốn, đang mượn ${dangMuon.recordset[0].cnt})`);
+      throw new Error(`Vượt giới hạn gói thẻ! Tối đa ${so_sach_toi_da} cuốn, đang mượn ${dangMuon.recordset[0].cnt}`);
 
     // Kiểm tra 3: Từng cuốn sách còn trong kho không
     for (const sachId of sach_ids) {

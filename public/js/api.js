@@ -41,7 +41,10 @@ async function http(method, path, body = null) {
 
   const data = await res.json().catch(() => ({}));
 
-  if (res.status === 401) { Auth.clear(); window.location = '/login.html'; }
+  if (res.status === 401 && !window.location.pathname.includes('login')) {
+    Auth.clear();
+    window.location = '/login.html';
+  }
   if (!res.ok) throw new Error(data.message || 'Lỗi máy chủ');
 
   return data;

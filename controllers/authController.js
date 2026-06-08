@@ -1,6 +1,6 @@
 // controllers/authController.js — Mục 1: Quản trị hệ thống
 const bcrypt = require('bcryptjs');
-const jwt    = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const { sql, getPool } = require('../config/db');
 
 // POST /api/auth/login
@@ -14,10 +14,14 @@ async function login(req, res) {
     const result = await pool.request()
       .input('u', sql.NVarChar, ten_dang_nhap)
       .query(`
-        SELECT tk.id_tai_khoan, tk.ten_dang_nhap, tk.mat_khau_hash, tk.trang_thai,
-               vt.ten_vai_tro
+        SELECT tk.id_tai_khoan, tk.ten_dang_nhap, tk.mat_khau_hash,
+              tk.trang_thai      AS trang_thai_tai_khoan,
+              vt.ten_vai_tro,
+              dg.trang_thai      AS trang_thai_doc_gia
         FROM tai_khoan tk
         JOIN vai_tro vt ON tk.id_vai_tro = vt.id_vai_tro
+        LEFT JOIN doc_gia   dg ON dg.id_tai_khoan = tk.id_tai_khoan
+        LEFT JOIN nhan_vien nv ON nv.id_tai_khoan = tk.id_tai_khoan
         WHERE tk.ten_dang_nhap = @u
       `);
 
@@ -25,11 +29,16 @@ async function login(req, res) {
       return res.status(401).json({ message: 'Tài khoản không tồn tại' });
 
     const user = result.recordset[0];
-    if (user.trang_thai !== 'active')
-      return res.status(403).json({ message: 'Tài khoản đã bị khóa' });
 
-    //const ok = await bcrypt.compare(mat_khau, user.mat_khau_hash);
-    const ok = (mat_khau === '1');
+    // Check chung cho tất cả (cả nhân viên lẫn độc giả)
+    if (user.trang_thai_tai_khoan !== 'active')
+    return res.status(403).json({ message: 'Tài khoản đã bị khóa' });
+
+    // Check thêm riêng cho độc giả (thẻ bị khóa dù account vẫn active)
+    if (user.trang_thai_doc_gia === 'locked')
+    return res.status(403).json({ message: 'Tài khoản đã bị khóa' });
+
+    const ok = await bcrypt.compare(mat_khau, user.mat_khau_hash);
     if (!ok) return res.status(401).json({ message: 'Mật khẩu không đúng' });
 
     const token = jwt.sign(
@@ -43,6 +52,7 @@ async function login(req, res) {
       user: { id: user.id_tai_khoan, ten_dang_nhap: user.ten_dang_nhap, vai_tro: user.ten_vai_tro }
     });
   } catch (err) {
+    console.error('[login error]', err);
     res.status(500).json({ message: 'Lỗi máy chủ', error: err.message });
   }
 }
