@@ -48,6 +48,28 @@ async function createReader(req, res) {
     const today     = new Date().toISOString().split('T')[0];
     const nextYear  = new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split('T')[0];
 
+    // --- 1. CHỐT CHẶN KIỂM TRA TRÙNG EMAIL ---
+    if (email) {
+      const checkEmail = await pool.request()
+        .input('email', sql.NVarChar, email)
+        .query('SELECT TOP 1 id_doc_gia FROM doc_gia WHERE email = @email');
+        
+      if (checkEmail.recordset.length > 0) {
+        return res.status(409).json({ message: 'Lỗi: Địa chỉ Email này đã được đăng ký cho một độc giả khác!' });
+      }
+    }
+
+    // --- 2. CHỐT CHẶN KIỂM TRA TRÙNG TÊN ĐĂNG NHẬP (Khuyên dùng) ---
+    if (ten_dang_nhap) {
+      const checkUsername = await pool.request()
+        .input('u', sql.NVarChar, ten_dang_nhap)
+        .query('SELECT TOP 1 id_tai_khoan FROM tai_khoan WHERE ten_dang_nhap = @u');
+        
+      if (checkUsername.recordset.length > 0) {
+        return res.status(409).json({ message: 'Lỗi: Tên đăng nhập này đã có người sử dụng!' });
+      }
+    }
+    
     // Tạo tài khoản đăng nhập nếu có thông tin
     let idTK = null;
     if (ten_dang_nhap && mat_khau) {
