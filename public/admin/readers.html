@@ -5,7 +5,13 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Quản lý độc giả — BIBLIOTHECA Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<style>*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}</style>
+<style>
+.inp:disabled {
+    background: var(--bg1);
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+*{margin:0;padding:0;box-sizing:border-box}:root{--bg:#0a0806;--bg1:#14100c;--bg2:#1c1612;--ink:#e8dcc4;--ink2:#8a7a60;--gold:#c9a96e}body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif}</style>
 </head>
 <body>
 <script src="/js/api.js"></script>
@@ -51,12 +57,81 @@ async function load(kw='',tt=''){
     document.getElementById('tbl-wrap').innerHTML=data.length?`<table><thead><tr><th>ID</th><th>HỌ TÊN</th><th>SĐT</th><th>GÓI THẺ</th><th>HẠN THẺ</th><th>ĐANG MƯỢN</th><th>TT</th><th></th></tr></thead><tbody>${data.map(r=>`<tr><td style="color:var(--ink2)">${r.id_doc_gia}</td><td><strong>${r.ho_ten}</strong><div style="font-size:11px;color:var(--ink2)">${r.email||''}</div></td><td>${r.sdt||'—'}</td><td style="color:var(--gold)">${r.ten_goi}</td><td style="color:${new Date(r.ngay_het_han)<new Date()?'#c97272':'var(--ink2)'}">${fmtDate(r.ngay_het_han)}</td><td style="color:${r.dang_muon>0?'#c9a96e':'var(--ink2)'}">${r.dang_muon}</td><td>${statusBadge(r.trang_thai)}</td><td><button class="btn-tbl" onclick="viewDetail(${r.id_doc_gia})">Chi tiết</button><button class="btn-tbl" onclick="openEdit(${r.id_doc_gia})">Sửa</button><button class="btn-tbl" onclick="giaHan(${r.id_doc_gia})">Gia hạn</button><button class="btn-tbl danger" onclick="toggleCard(${r.id_doc_gia},'${r.trang_thai}')">${r.trang_thai==='active'?'Khóa':'Mở'}</button><button class="btn-tbl danger" onclick="delReader(${r.id_doc_gia},'${r.ho_ten.replace(/'/g,"\\'")}')">Xóa</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Không có độc giả nào</div>';
   }catch(e){document.getElementById('tbl-wrap').innerHTML=`<div class="empty">${e.message}</div>`;}
 }
-function openAdd(){editId=null;document.getElementById('rmodal-title').textContent='ĐĂNG KÝ ĐỘC GIẢ MỚI';['r-name','r-phone','r-email','r-addr','r-user','r-pass'].forEach(id=>document.getElementById(id).value='');openModal('reader-modal');}
-async function openEdit(id){editId=id;try{const r=await api.get('/readers/'+id);document.getElementById('rmodal-title').textContent='CHỈNH SỬA ĐỘC GIẢ';document.getElementById('r-name').value=r.ho_ten;document.getElementById('r-phone').value=r.sdt||'';document.getElementById('r-email').value=r.email||'';document.getElementById('r-addr').value=r.dia_chi||'';document.getElementById('r-plan').value=r.id_goi_the;openModal('reader-modal');}catch(e){toast(e.message,'error');}}
-async function saveReader(){
-  const name=document.getElementById('r-name').value.trim();if(!name){toast('Thiếu họ tên','error');return;}
-  const body={ho_ten:name,sdt:document.getElementById('r-phone').value,email:document.getElementById('r-email').value,dia_chi:document.getElementById('r-addr').value,id_goi_the:parseInt(document.getElementById('r-plan').value),ten_dang_nhap:document.getElementById('r-user').value||null,mat_khau:document.getElementById('r-pass').value||null};
-  setLoading('#rsave-btn',true);try{if(editId)await api.put('/readers/'+editId,body);else await api.post('/readers',body);toast(editId?'Cập nhật thành công':'Đăng ký thẻ thành công','success');closeModal('reader-modal');load();}catch(e){toast(e.message,'error');}finally{setLoading('#rsave-btn',false);}
+function openAdd() {
+    editId = null;
+    document.getElementById('rmodal-title').textContent = 'ĐĂNG KÝ ĐỘC GIẢ MỚI';
+    
+    // Reset trắng dữ liệu và MỞ KHÓA tất cả các ô
+    ['r-name', 'r-phone', 'r-email', 'r-addr', 'r-user', 'r-pass'].forEach(id => {
+        const el = document.getElementById(id);
+        el.value = '';
+        el.disabled = false; // Bắt buộc phải có dòng này để mở khóa
+    });
+    
+    openModal('reader-modal');
+}
+async function openEdit(id) {
+    editId = id;
+    try {
+        const r = await api.get('/readers/' + id);
+        document.getElementById('rmodal-title').textContent = 'CHỈNH SỬA ĐỘC GIẢ';
+        document.getElementById('r-name').value = r.ho_ten;
+        document.getElementById('r-phone').value = r.sdt || '';
+        document.getElementById('r-email').value = r.email || '';
+        document.getElementById('r-addr').value = r.dia_chi || '';
+        document.getElementById('r-plan').value = r.id_goi_the;
+
+        // Bổ sung xử lý Tên đăng nhập và Mật khẩu
+        const userInp = document.getElementById('r-user');
+        const passInp = document.getElementById('r-pass');
+        
+        userInp.value = r.ten_dang_nhap || ''; 
+        passInp.value = r.ten_dang_nhap ? '********' : ''; // Giấu mật khẩu thực tế
+        
+        // KHÓA HAI Ô NÀY LẠI
+        userInp.disabled = true;
+        passInp.disabled = true;
+
+        openModal('reader-modal');
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+}
+async function saveReader() {
+    const name = document.getElementById('r-name').value.trim();
+    if (!name) { toast('Thiếu họ tên', 'error'); return; }
+
+    // Dữ liệu cơ bản luôn được gửi
+    const body = {
+        ho_ten: name,
+        sdt: document.getElementById('r-phone').value,
+        email: document.getElementById('r-email').value,
+        dia_chi: document.getElementById('r-addr').value,
+        id_goi_the: parseInt(document.getElementById('r-plan').value)
+    };
+
+    // NẾU LÀ ĐĂNG KÝ MỚI: Mới đọc thêm Tên đăng nhập và Mật khẩu
+    if (!editId) {
+        body.ten_dang_nhap = document.getElementById('r-user').value || null;
+        body.mat_khau = document.getElementById('r-pass').value || null;
+    }
+
+    setLoading('#rsave-btn', true);
+    try {
+        if (editId) {
+            await api.put('/readers/' + editId, body);
+            toast('Cập nhật thành công', 'success');
+        } else {
+            await api.post('/readers', body);
+            toast('Đăng ký thẻ thành công', 'success');
+        }
+        closeModal('reader-modal');
+        load();
+    } catch (e) {
+        toast(e.message, 'error');
+    } finally {
+        setLoading('#rsave-btn', false);
+    }
 }
 async function giaHan(id){if(!await confirm2('Gia hạn thẻ thêm 12 tháng?'))return;try{await api.patch('/readers/'+id+'/gia-han',{so_thang:12});toast('Đã gia hạn 12 tháng','success');load();}catch(e){toast(e.message,'error');}}
 async function toggleCard(id,tt){const action=tt==='active'?'khóa':'mở';if(!await confirm2(`Xác nhận ${action} thẻ độc giả này?`))return;try{await api.patch('/readers/'+id+'/khoa-the',{trang_thai:tt==='active'?'locked':'active'});toast(`Đã ${action} thẻ`,'success');load();}catch(e){toast(e.message,'error');}}

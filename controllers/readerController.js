@@ -30,8 +30,11 @@ async function getReaderById(req, res) {
     const result = await pool.request()
       .input('id', sql.Int, req.params.id)
       .query(`
-        SELECT dg.*, gt.ten_goi, gt.so_sach_toi_da, gt.so_ngay_muon
-        FROM doc_gia dg JOIN goi_the gt ON dg.id_goi_the=gt.id_goi_the
+        SELECT dg.*, gt.ten_goi, gt.so_sach_toi_da, gt.so_ngay_muon, 
+               tk.ten_dang_nhap -- BỔ SUNG: Lấy thêm tên đăng nhập từ bảng tài khoản
+        FROM doc_gia dg 
+        JOIN goi_the gt ON dg.id_goi_the=gt.id_goi_the
+        LEFT JOIN tai_khoan tk ON dg.id_tai_khoan=tk.id_tai_khoan -- BỔ SUNG: Lên kết với bảng tài khoản
         WHERE dg.id_doc_gia=@id
       `);
     if (!result.recordset.length) return res.status(404).json({ message: 'Không tìm thấy độc giả' });
@@ -42,13 +45,30 @@ async function getReaderById(req, res) {
 // POST /api/readers — Tiến trình 3.1: Đăng ký thẻ
 async function createReader(req, res) {
   const { ho_ten, sdt, email, dia_chi, id_goi_the, ten_dang_nhap, mat_khau } = req.body;
-  if (!ho_ten || !id_goi_the) return res.status(400).json({ message: 'Thiếu họ tên hoặc gói thẻ' });
+  
+  // 1. Kiểm tra xem có điền đầy đủ các trường bắt buộc không
+  if (!ho_ten || !id_goi_the || !ten_dang_nhap || !mat_khau) {
+    return res.status(400).json({ message: 'Thiếu thông tin: Họ tên, Gói thẻ, Tên đăng nhập và Mật khẩu là bắt buộc!' });
+  }
+
+  // --- 2. CHỐT CHẶN KIỂM TRA ĐỘ MẠNH MẬT KHẨU (MỚI THÊM) ---
+  // Kiểm tra độ dài
+  if (mat_khau.length < 8) {
+    return res.status(400).json({ message: 'Lỗi: Mật khẩu phải dài từ 8 ký tự trở lên!' });
+  }
+  // Kiểm tra xem có chứa chữ (a-z, A-Z) và số (0-9) không
+  const hasLetter = /[a-zA-Z]/.test(mat_khau);
+  const hasNumber = /[0-9]/.test(mat_khau);
+  if (!hasLetter || !hasNumber) {
+    return res.status(400).json({ message: 'Lỗi: Mật khẩu không hợp lệ! Mật khẩu bắt buộc phải bao gồm cả chữ và số.' });
+  }
+
   try {
     const pool = await getPool();
     const today     = new Date().toISOString().split('T')[0];
     const nextYear  = new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split('T')[0];
 
-    // --- 1. CHỐT CHẶN KIỂM TRA TRÙNG EMAIL ---
+    // --- 3. CHỐT CHẶN KIỂM TRA TRÙNG EMAIL ---
     if (email) {
       const checkEmail = await pool.request()
         .input('email', sql.NVarChar, email)
@@ -59,30 +79,25 @@ async function createReader(req, res) {
       }
     }
 
-    // --- 2. CHỐT CHẶN KIỂM TRA TRÙNG TÊN ĐĂNG NHẬP (Khuyên dùng) ---
-    if (ten_dang_nhap) {
-      const checkUsername = await pool.request()
-        .input('u', sql.NVarChar, ten_dang_nhap)
-        .query('SELECT TOP 1 id_tai_khoan FROM tai_khoan WHERE ten_dang_nhap = @u');
-        
-      if (checkUsername.recordset.length > 0) {
-        return res.status(409).json({ message: 'Lỗi: Tên đăng nhập này đã có người sử dụng!' });
-      }
-    }
-    // tc 15
-
-    // Tạo tài khoản đăng nhập nếu có thông tin
-    let idTK = null;
-    if (ten_dang_nhap && mat_khau) {
-      const hash = await bcrypt.hash(mat_khau, 10);
-      const tkR  = await pool.request()
-        .input('u', sql.NVarChar, ten_dang_nhap)
-        .input('h', sql.NVarChar, hash)
-        .query(`INSERT INTO tai_khoan (ten_dang_nhap,mat_khau_hash,id_vai_tro)
-                OUTPUT INSERTED.id_tai_khoan VALUES (@u,@h,3)`);
-      idTK = tkR.recordset[0].id_tai_khoan;
+    // --- 4. CHỐT CHẶN KIỂM TRA TRÙNG TÊN ĐĂNG NHẬP ---
+    const checkUsername = await pool.request()
+      .input('u', sql.NVarChar, ten_dang_nhap)
+      .query('SELECT TOP 1 id_tai_khoan FROM tai_khoan WHERE ten_dang_nhap = @u');
+      
+    if (checkUsername.recordset.length > 0) {
+      return res.status(409).json({ message: 'Lỗi: Tên đăng nhập này đã có người sử dụng!' });
     }
 
+    // --- 5. TẠO TÀI KHOẢN ĐĂNG NHẬP ---
+    const hash = await bcrypt.hash(mat_khau, 10);
+    const tkR  = await pool.request()
+      .input('u', sql.NVarChar, ten_dang_nhap)
+      .input('h', sql.NVarChar, hash)
+      .query(`INSERT INTO tai_khoan (ten_dang_nhap,mat_khau_hash,id_vai_tro)
+              OUTPUT INSERTED.id_tai_khoan VALUES (@u,@h,3)`);
+    const idTK = tkR.recordset[0].id_tai_khoan;
+
+    // --- 6. TẠO THÔNG TIN ĐỘC GIẢ ---
     const r = await pool.request()
       .input('idtk',   sql.Int,      idTK)
       .input('igt',    sql.Int,      id_goi_the)
@@ -94,6 +109,7 @@ async function createReader(req, res) {
       .input('nhh',    sql.Date,     nextYear)
       .query(`INSERT INTO doc_gia (id_tai_khoan,id_goi_the,ho_ten,sdt,email,dia_chi,ngay_dang_ky,ngay_het_han)
               OUTPUT INSERTED.id_doc_gia VALUES (@idtk,@igt,@ht,@sdt,@email,@diachi,@ndk,@nhh)`);
+
     res.status(201).json({ message: 'Đăng ký thẻ thành công', id_doc_gia: r.recordset[0].id_doc_gia });
   } catch (err) { res.status(500).json({ message: err.message }); }
 }
@@ -101,17 +117,38 @@ async function createReader(req, res) {
 // PUT /api/readers/:id — Tiến trình 3.2: Cập nhật
 async function updateReader(req, res) {
   const { ho_ten, sdt, email, dia_chi, id_goi_the } = req.body;
+  const id = req.params.id;
+
+  if (!ho_ten || !id_goi_the) {
+    return res.status(400).json({ message: 'Thiếu thông tin họ tên hoặc gói thẻ' });
+  }
+
   try {
     const pool = await getPool();
+
+    // --- CHỐT CHẶN: KIỂM TRA TRÙNG EMAIL VỚI NGƯỜI KHÁC ---
+    if (email) {
+      const checkEmail = await pool.request()
+        .input('email', sql.NVarChar, email)
+        .input('id', sql.Int, id) // Loại trừ người đang sửa ra
+        .query('SELECT TOP 1 id_doc_gia FROM doc_gia WHERE email = @email AND id_doc_gia != @id');
+        
+      if (checkEmail.recordset.length > 0) {
+        return res.status(409).json({ message: 'Lỗi: Địa chỉ Email này đã được một độc giả khác đăng ký!' });
+      }
+    }
+
+    // Thực hiện cập nhật dữ liệu độc giả
     await pool.request()
-      .input('id',    sql.Int,      req.params.id)
+      .input('id',    sql.Int,      id)
       .input('ht',    sql.NVarChar, ho_ten)
       .input('sdt',   sql.NVarChar, sdt   || null)
       .input('email', sql.NVarChar, email || null)
       .input('dc',    sql.NVarChar, dia_chi || null)
       .input('igt',   sql.Int,      id_goi_the)
       .query(`UPDATE doc_gia SET ho_ten=@ht,sdt=@sdt,email=@email,dia_chi=@dc,id_goi_the=@igt WHERE id_doc_gia=@id`);
-    res.json({ message: 'Cập nhật thành công' });
+      
+    res.json({ message: 'Cập nhật thông tin thành công' });
   } catch (err) { res.status(500).json({ message: err.message }); }
 }
 
@@ -129,7 +166,7 @@ async function renewCard(req, res) {
   } catch (err) { res.status(500).json({ message: err.message }); }
 }
 
-// PATCH /api/readers/:id/khoa-the — Tiến trình 3.4: Khóa/mở thẻ
+// PATCH /api/readers/:id/khoa-the — Tiến trình 3.4: Khóa/mở thẻ (ĐÃ KHÔI PHỤC)
 async function toggleCard(req, res) {
   const { trang_thai } = req.body; // 'active' | 'locked'
   try {
