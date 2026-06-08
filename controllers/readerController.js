@@ -57,6 +57,7 @@ async function createReader(req, res) {
     return res.status(400).json({ message: 'Lỗi: Mật khẩu phải dài từ 8 ký tự trở lên!' });
   }
   // Kiểm tra xem có chứa chữ (a-z, A-Z) và số (0-9) không
+  //tc-16
   const hasLetter = /[a-zA-Z]/.test(mat_khau);
   const hasNumber = /[0-9]/.test(mat_khau);
   if (!hasLetter || !hasNumber) {
