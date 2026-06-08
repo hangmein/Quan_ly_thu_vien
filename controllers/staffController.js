@@ -18,32 +18,76 @@ async function getStaff(req, res) {
 // POST /api/staff — Tiến trình 4.1: Thêm nhân sự (tự tạo tài khoản)
 async function createStaff(req, res) {
   const { ho_ten, sdt, email, chuc_vu, ngay_vao_lam, ten_dang_nhap, mat_khau } = req.body;
-  if (!ho_ten || !ten_dang_nhap || !mat_khau)
+  
+  // Kiểm tra thông tin bắt buộc đầu vào
+  if (!ho_ten || !ten_dang_nhap || !mat_khau) {
     return res.status(400).json({ message: 'Thiếu thông tin bắt buộc' });
+  }
+
+  // --- 1. CHỐT CHẶN KIỂM TRA NGÀY VÀO LÀM ---
+    const today = new Date().toISOString().split('T')[0];
+    const nvl = ngay_vao_lam || today;
+
+    // 1. Chặn tương lai (Nếu thư viện quy định không được tạo trước tài khoản)
+    if (nvl > today) {
+      return res.status(400).json({ message: 'Lỗi: Ngày vào làm không được vượt quá ngày lập hiện tại!' });
+    }
+
+    // 2. Chặn quá khứ quá xa (Ví dụ: Thư viện của bạn thành lập năm 2024, không thể có ai vào làm trước năm 2024)
+    const libraryFoundingDate = '2025-05-05'; 
+    if (nvl < libraryFoundingDate) {
+      return res.status(400).json({ message: 'Lỗi: Ngày vào làm không hợp lệ (Trước thời điểm thư viện thành lập)!' });
+    }
+
   try {
     const pool = await getPool();
+
+    // --- 2. CHỐT CHẶN: KIỂM TRA TRÙNG TÊN ĐĂNG NHẬP ---
+    const checkUser = await pool.request()
+      .input('u', sql.NVarChar, ten_dang_nhap)
+      .query('SELECT TOP 1 id_tai_khoan FROM tai_khoan WHERE ten_dang_nhap = @u');
+      
+    if (checkUser.recordset.length > 0) {
+      return res.status(409).json({ message: 'Lỗi: Tên đăng nhập này đã tồn tại trong hệ thống!' });
+    }
+
+    // --- 3. CHỐT CHẶN: KIỂM TRA TRÙNG EMAIL NHÂN VIÊN (Nếu có nhập) ---
+    if (email) {
+      const checkEmail = await pool.request()
+        .input('email', sql.NVarChar, email)
+        .query('SELECT TOP 1 id_nhan_vien FROM nhan_vien WHERE email = @email');
+        
+      if (checkEmail.recordset.length > 0) {
+        return res.status(409).json({ message: 'Lỗi: Địa chỉ Email này đã được một nhân viên khác sử dụng!' });
+      }
+    }
+
+    // --- 4. TIẾN HÀNH TẠO TÀI KHOẢN (Khi mọi điều kiện đã an toàn) ---
     const hash = await bcrypt.hash(mat_khau, 10);
-    // Tạo tài khoản (vai trò 2 = librarian)
     const tkR = await pool.request()
       .input('u', sql.NVarChar, ten_dang_nhap)
       .input('h', sql.NVarChar, hash)
       .query(`INSERT INTO tai_khoan (ten_dang_nhap,mat_khau_hash,id_vai_tro)
-              OUTPUT INSERTED.id_tai_khoan VALUES (@u,@h,2)`);
+              OUTPUT INSERTED.id_tai_khoan VALUES (@u,@h,2)`); // Vai trò 2 = Thủ thư
+              
     const idTK = tkR.recordset[0].id_tai_khoan;
-    // Tạo hồ sơ nhân viên
+
+    // --- 5. TẠO HỒ SƠ NHÂN VIÊN ---
     const r = await pool.request()
       .input('idtk',  sql.Int,      idTK)
       .input('ht',    sql.NVarChar, ho_ten)
       .input('sdt',   sql.NVarChar, sdt  || null)
       .input('email', sql.NVarChar, email || null)
       .input('cv',    sql.NVarChar, chuc_vu || 'Thủ thư')
-      .input('nvl',   sql.Date,     ngay_vao_lam || new Date().toISOString().split('T')[0])
+      .input('nvl',   sql.Date,     nvl) // Sử dụng biến nvl đã qua kiểm duyệt ở trên
       .query(`INSERT INTO nhan_vien (id_tai_khoan,ho_ten,sdt,email,chuc_vu,ngay_vao_lam)
               OUTPUT INSERTED.id_nhan_vien VALUES (@idtk,@ht,@sdt,@email,@cv,@nvl)`);
+              
     res.status(201).json({ message: 'Thêm nhân viên thành công', id_nhan_vien: r.recordset[0].id_nhan_vien });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ message: err.message }); 
+  }
 }
-
 // PUT /api/staff/:id — Tiến trình 4.2: Cập nhật
 async function updateStaff(req, res) {
   const { ho_ten, sdt, email, chuc_vu } = req.body;
