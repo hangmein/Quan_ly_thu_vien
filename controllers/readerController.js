@@ -69,7 +69,8 @@ async function createReader(req, res) {
         return res.status(409).json({ message: 'Lỗi: Tên đăng nhập này đã có người sử dụng!' });
       }
     }
-    
+    // tc 15
+
     // Tạo tài khoản đăng nhập nếu có thông tin
     let idTK = null;
     if (ten_dang_nhap && mat_khau) {
