@@ -167,7 +167,7 @@ async function saveBook() {
     id_ke:   parseInt(document.getElementById('b-ke').value)||null,
     id_ngon_ngu: parseInt(document.getElementById('b-lang').value)||null,
     nam_xuat_ban: parseInt(document.getElementById('b-year').value)||null,
-    so_luong_tong: parseInt(document.getElementById('b-qty').value)||1,
+    so_luong_tong: parseInt(document.getElementById('b-qty').value),
   };
 
   setLoading('#save-btn', true);

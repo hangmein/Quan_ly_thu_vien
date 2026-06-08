@@ -59,6 +59,10 @@ async function createBook(req, res) {
   const { isbn, tieu_de, id_the_loai, id_tac_gia, id_nxb, id_ke, id_ngon_ngu, nam_xuat_ban, so_luong_tong, anh_bia } = req.body;
   if (!tieu_de || !id_the_loai || !id_tac_gia)
     return res.status(400).json({ message: 'Thiếu tiêu đề, thể loại hoặc tác giả' });
+  const qty = parseInt(so_luong_tong);
+    if (isNaN(qty) || qty <= 0) {
+      return res.status(400).json({ message: 'Lỗi: Số lượng tổng của sách phải lớn hơn 0!' });
+    }
   try {
     const pool = await getPool();
     // --- 1. KIỂM TRA TRÙNG ISBN ---
@@ -78,7 +82,7 @@ async function createBook(req, res) {
     if (checkTitle.recordset.length > 0) {
         return res.status(409).json({ message: 'Lỗi: Tên sách này đã tồn tại!' });
     }
-    const qty  = parseInt(so_luong_tong) || 1;
+    
     const r = await pool.request()
       .input('isbn',        sql.NVarChar, isbn || null)
       .input('tieu_de',     sql.NVarChar, tieu_de)
