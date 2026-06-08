@@ -106,27 +106,67 @@ async function createBook(req, res) {
 // PUT /api/books/:id
 async function updateBook(req, res) {
   const { tieu_de, id_the_loai, id_tac_gia, id_nxb, id_ke, nam_xuat_ban, so_luong_tong, anh_bia } = req.body;
+  const id = req.params.id;
+
+  // 1. Kiểm tra đầu vào số lượng giống hệt lúc tạo sách
+  const qty = parseInt(so_luong_tong);
+  if (isNaN(qty) || qty <= 0) {
+    return res.status(400).json({ message: 'Lỗi: Số lượng tổng của sách phải lớn hơn 0!' });
+  }
+
   try {
     const pool = await getPool();
+
+    // 2. LẤY THÔNG TIN SỐ LƯỢNG SÁCH CŨ TRONG DATABASE
+    const currentBookInfo = await pool.request()
+      .input('id', sql.Int, id)
+      .query('SELECT so_luong_tong, so_luong_ton FROM sach WHERE id_sach = @id');
+
+    if (currentBookInfo.recordset.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy sách' });
+    }
+
+    const sl_tong_cu = currentBookInfo.recordset[0].so_luong_tong;
+    const sl_ton_cu = currentBookInfo.recordset[0].so_luong_ton;
+    
+    // Tính ra số lượng sách đang bị độc giả giữ (đang mượn)
+    const sl_dang_muon = sl_tong_cu - sl_ton_cu; 
+
+    // 3. KIỂM TRA ĐIỀU KIỆN: Số lượng tổng mới không được nhỏ hơn số sách đang cho mượn
+    if (qty < sl_dang_muon) {
+      return res.status(400).json({ 
+        message: `Lỗi: Hiện đang có ${sl_dang_muon} cuốn sách này được cho mượn. Không thể giảm tổng số lượng xuống ${qty}!` 
+      });
+    }
+
+    // 4. TÍNH TOÁN SỐ LƯỢNG TỒN (TRÊN KỆ) MỚI
+    // Tồn mới = Tồn cũ + (Tổng mới - Tổng cũ)
+    const sl_ton_moi = sl_ton_cu + (qty - sl_tong_cu);
+
+    // 5. TIẾN HÀNH UPDATE CẢ TỔNG LẪN TỒN
     const r = await pool.request()
-      .input('id',          sql.Int,      req.params.id)
+      .input('id',          sql.Int,      id)
       .input('tieu_de',     sql.NVarChar, tieu_de)
       .input('id_the_loai', sql.Int,      id_the_loai)
       .input('id_tac_gia',  sql.Int,      id_tac_gia)
       .input('id_nxb',      sql.Int,      id_nxb || null)
       .input('id_ke',       sql.Int,      id_ke  || null)
       .input('nam',         sql.Int,      nam_xuat_ban || null)
-      .input('qty',         sql.Int,      so_luong_tong)
+      .input('qty_tong',    sql.Int,      qty)         // Số lượng tổng mới
+      .input('qty_ton',     sql.Int,      sl_ton_moi)  // Số lượng tồn kho mới vừa tính
       .input('anh_bia',     sql.NVarChar, anh_bia || null)
       .query(`
         UPDATE sach
         SET tieu_de=@tieu_de, id_the_loai=@id_the_loai, id_tac_gia=@id_tac_gia,
-            id_nxb=@id_nxb, id_ke=@id_ke, nam_xuat_ban=@nam, so_luong_tong=@qty, anh_bia=@anh_bia
+            id_nxb=@id_nxb, id_ke=@id_ke, nam_xuat_ban=@nam, 
+            so_luong_tong=@qty_tong, so_luong_ton=@qty_ton, anh_bia=@anh_bia
         WHERE id_sach=@id
       `);
-    if (!r.rowsAffected[0]) return res.status(404).json({ message: 'Không tìm thấy sách' });
+
     res.json({ message: 'Cập nhật thành công' });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { 
+    res.status(500).json({ message: err.message }); 
+  }
 }
 
 // DELETE /api/books/:id
